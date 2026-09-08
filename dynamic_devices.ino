@@ -115,6 +115,7 @@ const char *deviceTypeName(uint8_t type) {
     case USER_SWITCH: return "开关";
     case USER_FAN: return "风扇";
     case USER_TELEVISION: return "电视";
+    case USER_AIR_CONDITIONER: return "空调";
     default: return "未知";
   }
 }
@@ -133,6 +134,9 @@ const char *actionName(uint8_t action) {
     case ACTION_LEFT: return "左";
     case ACTION_RIGHT: return "右";
     case ACTION_SELECT: return "确认";
+    case ACTION_TEMPERATURE_UP: return "温度增加";
+    case ACTION_TEMPERATURE_DOWN: return "温度降低";
+    case ACTION_MODE: return "模式切换";
     default: return "未定义";
   }
 }
@@ -144,8 +148,12 @@ uint8_t actionsForType(uint8_t type, const uint8_t *&actions) {
       ACTION_POWER, ACTION_VOLUME_UP, ACTION_VOLUME_DOWN, ACTION_CHANNEL_UP,
       ACTION_CHANNEL_DOWN, ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT,
       ACTION_SELECT};
+  static const uint8_t airConditionerActions[] = {
+      ACTION_POWER, ACTION_TEMPERATURE_UP, ACTION_TEMPERATURE_DOWN,
+      ACTION_MODE, ACTION_SPEED_UP, ACTION_SPEED_DOWN};
   if (type == USER_SWITCH) { actions = switchActions; return 1; }
   if (type == USER_FAN) { actions = fanActions; return 3; }
+  if (type == USER_AIR_CONDITIONER) { actions = airConditionerActions; return 6; }
   actions = televisionActions;
   return 10;
 }
@@ -171,7 +179,7 @@ String pageHeader() {
            ".hero{padding:34px 30px 31px;border-radius:24px;background:linear-gradient(132deg,rgba(255,255,251,.94),rgba(224,235,225,.9));border:1px solid rgba(255,255,255,.8);box-shadow:0 14px 34px rgba(55,76,62,.1);position:relative;overflow:hidden}.hero:after{content:'';position:absolute;width:190px;height:190px;border:1px solid rgba(91,125,102,.2);border-radius:50%;right:-80px;top:-95px;box-shadow:-25px 27px 0 -1px rgba(91,125,102,.09)}"
            ".eyebrow{margin:0 0 9px;color:var(--sage-dark);font-size:12px;font-weight:700;letter-spacing:.14em}.hero h1{margin:0;font-family:ui-serif,Georgia,'Songti SC',serif;font-size:30px;letter-spacing:.04em;font-weight:600}.hero p{max-width:530px;margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.65;position:relative;z-index:1}"
            "section{border:1px solid var(--line);border-radius:20px;padding:27px 25px;margin:22px 0;background:var(--card);backdrop-filter:blur(7px);box-shadow:0 8px 24px rgba(45,65,52,.07)}section h2{font-family:ui-serif,Georgia,'Songti SC',serif;font-size:21px;font-weight:600;letter-spacing:.02em;margin:0 0 14px}section h2 small{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:0}.muted{color:var(--muted);font-size:14px;line-height:1.8}.ok{color:var(--sage-dark);font-size:14px;font-weight:600}"
-           "form{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.config-form>input[name=name]{flex:1 1 220px}.action-form{display:inline-flex;margin:8px 8px 0 0}.publish-form{margin-top:14px}button{appearance:none;background:var(--sage-dark);color:#fff;border:0;border-radius:10px;padding:11px 16px;min-height:42px;margin:0;font:600 14px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;letter-spacing:.01em;box-shadow:0 3px 7px rgba(51,76,61,.14)}button:active{transform:translateY(1px);background:#415b4d}input,select{font:15px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--ink);background:#fbfcf9;border:1px solid #cbd8cc;border-radius:9px;padding:11px 12px;min-height:42px;margin:0;max-width:100%}input[type=checkbox]{appearance:auto;accent-color:var(--sage-dark);width:22px!important;height:22px;min-width:22px!important;min-height:22px;flex:0 0 22px!important;padding:0;vertical-align:middle}label{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);white-space:nowrap}a{color:var(--sage-dark);font-weight:600;text-decoration:none}@media(max-width:520px){body{padding:calc(22px + env(safe-area-inset-top)) 13px calc(45px + env(safe-area-inset-bottom))}.hero{padding:27px 22px}.hero h1{font-size:27px}section{padding:22px 18px;margin:17px 0}.config-form,.create-form{flex-direction:column;align-items:stretch;gap:12px}.config-form>input[name=name],.config-form select,.config-form button,.create-form input[name=name],.create-form select,.create-form button{width:100%;flex:0 0 auto}.config-form label{width:100%;min-height:42px}.action-form{display:flex;width:100%;margin:8px 0 0}.action-form button,.publish-form button{width:100%}button{padding:11px 13px;font-size:14px}}"
+           "form{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.config-form>input[name=name]{flex:1 1 220px}.action-form{display:inline-flex;margin:8px 8px 0 0}.publish-form{margin-top:14px}.danger{background:#8d5b58}button{appearance:none;background:var(--sage-dark);color:#fff;border:0;border-radius:10px;padding:11px 16px;min-height:42px;margin:0;font:600 14px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;letter-spacing:.01em;box-shadow:0 3px 7px rgba(51,76,61,.14)}button:active{transform:translateY(1px);background:#415b4d}input,select{font:15px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--ink);background:#fbfcf9;border:1px solid #cbd8cc;border-radius:9px;padding:11px 12px;min-height:42px;margin:0;max-width:100%}input[type=checkbox]{appearance:auto;accent-color:var(--sage-dark);width:22px!important;height:22px;min-width:22px!important;min-height:22px;flex:0 0 22px!important;padding:0;vertical-align:middle}label{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);white-space:nowrap}a{color:var(--sage-dark);font-weight:600;text-decoration:none}@media(max-width:520px){body{padding:calc(22px + env(safe-area-inset-top)) 13px calc(45px + env(safe-area-inset-bottom))}.hero{padding:27px 22px}.hero h1{font-size:27px}section{padding:22px 18px;margin:17px 0}.config-form,.create-form{flex-direction:column;align-items:stretch;gap:12px}.config-form>input[name=name],.config-form select,.config-form button,.create-form input[name=name],.create-form select,.create-form button{width:100%;flex:0 0 auto}.config-form label{width:100%;min-height:42px}.action-form{display:flex;width:100%;margin:8px 0 0}.action-form button,.publish-form button{width:100%}button{padding:11px 13px;font-size:14px}}"
            "</style><body><header class='hero'><p class='eyebrow'>IR HUB · HOME EDITION</p><h1>家居控制中心</h1><p>把熟悉的遥控器，安静地收进你的日常生活。</p></header>");
 }
 
@@ -215,10 +223,11 @@ void sendManagerPage() {
     if (!device.enabled) {
       html += "<form class='publish-form' method='post' action='/publish'><input type='hidden' name='id' value='" + String(id) + "'><button>完成并发布此设备</button></form>";
     }
+    html += "<form class='publish-form' method='post' action='/delete' onsubmit=\"return confirm('确定删除此设备及全部学习码？')\"><input type='hidden' name='id' value='" + String(id) + "'><button class='danger'>删除此设备</button></form>";
     html += "</section>";
   }
   html += F("<section><h2>新建设备</h2><form class='create-form' method='post' action='/create'><input name='name' maxlength='31' required placeholder='例如：客厅电视'>"
-            "<select name='type'><option value='0'>普通开关</option><option value='1'>风扇</option><option value='2'>电视</option></select><button>创建并开始学习</button></form>"
+            "<select name='type'><option value='0'>普通开关</option><option value='1'>风扇</option><option value='2'>电视</option><option value='3'>空调</option></select><button>创建并开始学习</button></form>"
             "<p class='muted'>提示：带独立开/关按键的设备，目前请学习常用的“开关”键；状态无法由红外反向读取。</p></section></body></html>");
   deviceServer.send(200, "text/html; charset=utf-8", html);
 }
@@ -249,6 +258,25 @@ void handleCreateDevice() {
     return;
   }
   deviceServer.send(409, "text/plain; charset=utf-8", "最多保存 8 个自定义设备");
+}
+
+void handleDeleteDevice() {
+  int id = deviceServer.arg("id").toInt();
+  UserDevice device;
+  if (id < 0 || id >= MAX_USER_DEVICES || !loadUserDevice(id, device)) {
+    deviceServer.send(400, "text/plain; charset=utf-8", "无效设备"); return;
+  }
+  char key[12];
+  deviceKey(id, key, sizeof(key));
+  preferences.remove(key);
+  for (uint8_t action = 0; action < MAX_DEVICE_ACTIONS; ++action) {
+    deviceCodeKey(id, action, key, sizeof(key));
+    preferences.remove(key);
+  }
+  homeSpan.forceNewConfigNumber();
+  restartAt = millis() + 1200;
+  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
+                    "<section><h2>设备已删除</h2><p>红外学习码已清除，Hub 正在重启并更新 HomeKit 配置。</p></section></body></html>");
 }
 
 void handleBuiltInDevice() {
@@ -335,6 +363,7 @@ void beginDeviceManager() {
   });
   deviceServer.on("/", HTTP_GET, sendManagerPage);
   deviceServer.on("/create", HTTP_POST, handleCreateDevice);
+  deviceServer.on("/delete", HTTP_POST, handleDeleteDevice);
   deviceServer.on("/builtin", HTTP_POST, handleBuiltInDevice);
   deviceServer.on("/builtintest", HTTP_POST, handleBuiltInTest);
   deviceServer.on("/learn", HTTP_POST, handleLearn);
@@ -394,6 +423,57 @@ struct IRLearnedFan : Service::Fan {
   }
 };
 
+struct IRLearnedAirConditioner : Service::HeaterCooler {
+  uint8_t id;
+  SpanCharacteristic *active;
+  SpanCharacteristic *currentTemperature;
+  SpanCharacteristic *currentState;
+  SpanCharacteristic *targetState;
+  SpanCharacteristic *coolingThreshold;
+  SpanCharacteristic *heatingThreshold;
+  SpanCharacteristic *speed;
+
+  IRLearnedAirConditioner(uint8_t id) : Service::HeaterCooler(), id(id) {
+    active = new Characteristic::Active(0);
+    currentTemperature = new Characteristic::CurrentTemperature(24);
+    currentState = new Characteristic::CurrentHeaterCoolerState(0);
+    targetState = new Characteristic::TargetHeaterCoolerState(2);
+    targetState->setValidValues(2, 1, 2);
+    coolingThreshold = new Characteristic::CoolingThresholdTemperature(24);
+    heatingThreshold = new Characteristic::HeatingThresholdTemperature(24);
+    coolingThreshold->setRange(16, 32, 1);
+    heatingThreshold->setRange(16, 32, 1);
+    new Characteristic::TemperatureDisplayUnits(0);
+    speed = new Characteristic::RotationSpeed(50);
+  }
+
+  boolean update() override {
+    if (active->updated()) {
+      if (!sendUserCode(id, ACTION_POWER)) return false;
+      currentState->setVal(active->getNewVal() ? 2 : 0);
+      return true;
+    }
+    if (targetState->updated()) return sendUserCode(id, ACTION_MODE);
+    if (coolingThreshold->updated() || heatingThreshold->updated()) {
+      SpanCharacteristic *changed = coolingThreshold->updated()
+          ? coolingThreshold : heatingThreshold;
+      float nextTemperature = changed->getNewVal<float>();
+      bool up = nextTemperature > changed->getVal<float>();
+      if (!sendUserCode(id, up ? ACTION_TEMPERATURE_UP : ACTION_TEMPERATURE_DOWN))
+        return false;
+      currentTemperature->setVal(nextTemperature);
+      if (changed == coolingThreshold) heatingThreshold->setVal(nextTemperature);
+      else coolingThreshold->setVal(nextTemperature);
+      return true;
+    }
+    if (speed->updated()) {
+      return sendUserCode(id, speed->getNewVal<float>() > speed->getVal<float>()
+                                  ? ACTION_SPEED_UP : ACTION_SPEED_DOWN);
+    }
+    return true;
+  }
+};
+
 struct IRLearnedTelevision : Service::Television {
   uint8_t id;
   SpanCharacteristic *active;
@@ -445,6 +525,8 @@ void configureUserDevices() {
         new IRLearnedSwitch(id);
       } else if (device.type == USER_FAN) {
         new IRLearnedFan(id);
+      } else if (device.type == USER_AIR_CONDITIONER) {
+        new IRLearnedAirConditioner(id);
       } else {
         SpanService *speaker = new IRLearnedTelevisionSpeaker(id);
         (new IRLearnedTelevision(id))->addLink(speaker);
