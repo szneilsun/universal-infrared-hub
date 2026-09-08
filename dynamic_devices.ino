@@ -189,7 +189,7 @@ String pageHeader() {
            ".hero{padding:34px 30px 31px;border-radius:24px;background:linear-gradient(132deg,rgba(255,255,251,.94),rgba(224,235,225,.9));border:1px solid rgba(255,255,255,.8);box-shadow:0 14px 34px rgba(55,76,62,.1);position:relative;overflow:hidden}.hero:after{content:'';position:absolute;width:190px;height:190px;border:1px solid rgba(91,125,102,.2);border-radius:50%;right:-80px;top:-95px;box-shadow:-25px 27px 0 -1px rgba(91,125,102,.09)}"
            ".eyebrow{margin:0 0 9px;color:var(--sage-dark);font-size:12px;font-weight:700;letter-spacing:.14em}.hero h1{margin:0;font-family:ui-serif,Georgia,'Songti SC',serif;font-size:30px;letter-spacing:.04em;font-weight:600}.hero p{max-width:530px;margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.65;position:relative;z-index:1}"
            "section{border:1px solid var(--line);border-radius:20px;padding:27px 25px;margin:22px 0;background:var(--card);backdrop-filter:blur(7px);box-shadow:0 8px 24px rgba(45,65,52,.07)}section h2{font-family:ui-serif,Georgia,'Songti SC',serif;font-size:21px;font-weight:600;letter-spacing:.02em;margin:0 0 14px}section h2 small{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:0}.muted{color:var(--muted);font-size:14px;line-height:1.8}.ok{color:var(--sage-dark);font-size:14px;font-weight:600}"
-           "form{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.config-form>input[name=name]{flex:1 1 220px}.action-form{display:inline-flex;margin:8px 8px 0 0}.publish-form{margin-top:14px}.danger{background:#8d5b58}button{appearance:none;background:var(--sage-dark);color:#fff;border:0;border-radius:10px;padding:11px 16px;min-height:42px;margin:0;font:600 14px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;letter-spacing:.01em;box-shadow:0 3px 7px rgba(51,76,61,.14)}button:active{transform:translateY(1px);background:#415b4d}input,select{font:15px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--ink);background:#fbfcf9;border:1px solid #cbd8cc;border-radius:9px;padding:11px 12px;min-height:42px;margin:0;max-width:100%}input[type=checkbox]{appearance:auto;accent-color:var(--sage-dark);width:22px!important;height:22px;min-width:22px!important;min-height:22px;flex:0 0 22px!important;padding:0;vertical-align:middle}label{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);white-space:nowrap}a{color:var(--sage-dark);font-weight:600;text-decoration:none}@media(max-width:520px){body{padding:calc(22px + env(safe-area-inset-top)) 13px calc(45px + env(safe-area-inset-bottom))}.hero{padding:27px 22px}.hero h1{font-size:27px}section{padding:22px 18px;margin:17px 0}.config-form,.create-form{flex-direction:column;align-items:stretch;gap:12px}.config-form>input[name=name],.config-form select,.config-form button,.create-form input[name=name],.create-form select,.create-form button{width:100%;flex:0 0 auto}.config-form label{width:100%;min-height:42px}.action-form{display:flex;width:100%;margin:8px 0 0}.action-form button,.publish-form button{width:100%}button{padding:11px 13px;font-size:14px}}"
+           "form{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.config-form>input[name=name]{flex:1 1 220px}.action-form{display:inline-flex;margin:8px 8px 0 0}.publish-form{margin-top:14px}.danger{background:#8d5b58}.warning{background:#806a48}.about{text-align:center;background:rgba(255,255,252,.68);padding:20px}.about p{margin:5px 0}.credit{font-family:ui-serif,Georgia,'Songti SC',serif;color:var(--sage-dark);font-size:16px;letter-spacing:.04em}button{appearance:none;background:var(--sage-dark);color:#fff;border:0;border-radius:10px;padding:11px 16px;min-height:42px;margin:0;font:600 14px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;letter-spacing:.01em;box-shadow:0 3px 7px rgba(51,76,61,.14)}button:active{transform:translateY(1px);background:#415b4d}input,select{font:15px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--ink);background:#fbfcf9;border:1px solid #cbd8cc;border-radius:9px;padding:11px 12px;min-height:42px;margin:0;max-width:100%}input[type=checkbox]{appearance:auto;accent-color:var(--sage-dark);width:22px!important;height:22px;min-width:22px!important;min-height:22px;flex:0 0 22px!important;padding:0;vertical-align:middle}label{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);white-space:nowrap}a{color:var(--sage-dark);font-weight:600;text-decoration:none}@media(max-width:520px){body{padding:calc(22px + env(safe-area-inset-top)) 13px calc(45px + env(safe-area-inset-bottom))}.hero{padding:27px 22px}.hero h1{font-size:27px}section{padding:22px 18px;margin:17px 0}.config-form,.create-form{flex-direction:column;align-items:stretch;gap:12px}.config-form>input[name=name],.config-form select,.config-form button,.create-form input[name=name],.create-form select,.create-form button{width:100%;flex:0 0 auto}.config-form label{width:100%;min-height:42px}.action-form{display:flex;width:100%;margin:8px 0 0}.action-form button,.publish-form button{width:100%}button{padding:11px 13px;font-size:14px}}"
            "</style><body><header class='hero'><p class='eyebrow'>IR HUB · HOME EDITION</p><h1>家居控制中心</h1><p>把熟悉的遥控器，安静地收进你的日常生活。</p></header>");
 }
 
@@ -238,7 +238,12 @@ void sendManagerPage() {
   }
   html += F("<section><h2>新建设备</h2><form class='create-form' method='post' action='/create'><input name='name' maxlength='31' required placeholder='例如：客厅电视'>"
             "<select name='type'><option value='0'>普通开关</option><option value='1'>风扇</option><option value='2'>电视</option><option value='3'>空调</option></select><button>创建并开始学习</button></form>"
-            "<p class='muted'>提示：带独立开/关按键的设备，目前请学习常用的“开关”键；状态无法由红外反向读取。</p></section></body></html>");
+            "<p class='muted'>提示：带独立开/关按键的设备，目前请学习常用的“开关”键；状态无法由红外反向读取。</p></section>");
+  html += F("<section><h2>系统维护</h2><p class='muted'>以下操作会立即重启 Hub。网络与 HomeKit 重置不会删除红外码；删除学习设备不会影响内置空调和机顶盒。</p>"
+            "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定删除所有自建设备及学习码？此操作不可恢复。')\"><input type='hidden' name='action' value='clear-learned'><button class='danger'>删除所有学习设备</button></form>"
+            "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定清除 Wi-Fi 配置并进入联网设置？')\"><input type='hidden' name='action' value='reset-network'><button class='warning'>重置网络</button></form>"
+            "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定清除 HomeKit 配对？需要在家庭 App 中重新添加 Hub。')\"><input type='hidden' name='action' value='reset-homekit'><button class='warning'>重置 HomeKit</button></form></section>");
+  html += "<section class='about'><p class='muted'>红外 Hub v" + String(FIRMWARE_VERSION) + " · 编译于 " + String(FIRMWARE_BUILD_DATE) + "</p><p class='credit'>Coding by AI, loving by Neil</p></section></body></html>";
   deviceServer.send(200, "text/html; charset=utf-8", html);
 }
 
@@ -287,6 +292,44 @@ void handleDeleteDevice() {
   restartAt = millis() + 1200;
   deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
                     "<section><h2>设备已删除</h2><p>红外学习码已清除，Hub 正在重启并更新 HomeKit 配置。</p></section></body></html>");
+}
+
+void clearAllLearnedData() {
+  char key[12];
+  for (uint8_t slot = 0; slot < MAX_CODES; ++slot) {
+    recordKey(slot, key, sizeof(key));
+    preferences.remove(key);
+  }
+  for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
+    deviceKey(id, key, sizeof(key));
+    preferences.remove(key);
+    for (uint8_t action = 0; action < MAX_DEVICE_ACTIONS; ++action) {
+      deviceCodeKey(id, action, key, sizeof(key));
+      preferences.remove(key);
+    }
+  }
+}
+
+void handleMaintenance() {
+  String action = deviceServer.arg("action");
+  const char *message = nullptr;
+  if (action == "clear-learned") {
+    clearAllLearnedData();
+    homeSpan.forceNewConfigNumber();
+    message = "所有自建设备与学习码已删除。";
+  } else if (action == "reset-network") {
+    resetNetworkConfiguration();
+    message = "网络配置已清除，重启后将进入联网设置。";
+  } else if (action == "reset-homekit") {
+    resetHomeKitConfiguration();
+    message = "HomeKit 配对已清除，请在家庭 App 中重新添加 Hub。";
+  } else {
+    deviceServer.send(400, "text/plain; charset=utf-8", "未知维护操作"); return;
+  }
+  restartAt = millis() + 1200;
+  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
+                    "<section><h2>操作完成</h2><p>" + String(message) +
+                    "Hub 正在重启。</p></section></body></html>");
 }
 
 void handleBuiltInDevice() {
@@ -374,6 +417,7 @@ void beginDeviceManager() {
   deviceServer.on("/", HTTP_GET, sendManagerPage);
   deviceServer.on("/create", HTTP_POST, handleCreateDevice);
   deviceServer.on("/delete", HTTP_POST, handleDeleteDevice);
+  deviceServer.on("/maintenance", HTTP_POST, handleMaintenance);
   deviceServer.on("/builtin", HTTP_POST, handleBuiltInDevice);
   deviceServer.on("/builtintest", HTTP_POST, handleBuiltInTest);
   deviceServer.on("/learn", HTTP_POST, handleLearn);

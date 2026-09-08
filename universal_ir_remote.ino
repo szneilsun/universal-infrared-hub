@@ -17,6 +17,7 @@ constexpr uint8_t IR_SEND_PIN = 40;
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
 constexpr char FIRMWARE_VERSION[] = "2.01";
+constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
 constexpr char HOMEKIT_PAIRING_CODE[] = "11122333";
@@ -50,6 +51,8 @@ void beginDeviceManager();
 void pollDeviceManager();
 bool isWebLearning();
 void saveWebLearnedCode(const IRData &signal);
+void resetNetworkConfiguration();
+void resetHomeKitConfiguration();
 uint8_t cycleSetTopBoxCarrier();
 uint8_t getSetTopBoxCarrier();
 
@@ -105,16 +108,25 @@ void printVersion() {
                 IR_RECEIVE_PIN, IR_SEND_PIN);
 }
 
-void resetHomeKitAndWiFi() {
+void eraseNvsNamespace(const char *name) {
   nvs_handle handle;
-  const char *namespaces[] = {"HAP", "WIFI", "CHAR"};
-  for (const char *name : namespaces) {
-    if (nvs_open(name, NVS_READWRITE, &handle) == ESP_OK) {
-      nvs_erase_all(handle);
-      nvs_commit(handle);
-      nvs_close(handle);
-    }
+  if (nvs_open(name, NVS_READWRITE, &handle) == ESP_OK) {
+    nvs_erase_all(handle);
+    nvs_commit(handle);
+    nvs_close(handle);
   }
+}
+
+void resetNetworkConfiguration() { eraseNvsNamespace("WIFI"); }
+
+void resetHomeKitConfiguration() {
+  eraseNvsNamespace("HAP");
+  eraseNvsNamespace("CHAR");
+}
+
+void resetHomeKitAndWiFi() {
+  resetNetworkConfiguration();
+  resetHomeKitConfiguration();
   Serial.println("HomeKit pairing and Wi-Fi credentials cleared.");
   Serial.println("IR learning codes were kept. Restarting...");
   delay(500);
