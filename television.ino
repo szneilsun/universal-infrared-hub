@@ -107,6 +107,7 @@ struct IRTelevision : Service::Television {
 
   IRTelevision() : Service::Television() {
     active = new Characteristic::Active(0);
+    new Characteristic::ActiveIdentifier(1);
     remoteKey = new Characteristic::RemoteKey();
     new Characteristic::ConfiguredName(builtInDeviceName(1));
   }
@@ -165,8 +166,12 @@ void configureTelevisionAccessory() {
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
     // Create Television first so HomeKit identifies this bridged accessory as
     // a TV instead of treating its linked speaker as the primary service.
-    SpanService *television = new IRTelevision();
-    television->addLink(new IRTelevisionSpeaker());
+    SpanService *television = (new IRTelevision())->setPrimary();
+    SpanService *input = new Service::InputSource();
+      new Characteristic::Identifier(1);
+      new Characteristic::ConfiguredName("机顶盒");
+      new Characteristic::IsConfigured(1);
+    television->addLink(input)->addLink(new IRTelevisionSpeaker());
 }
 
 void sendWebTelevisionTest(uint8_t action) {

@@ -73,7 +73,7 @@ bool loadUserDevice(uint8_t id, UserDevice &device) {
   if (preferences.getBytesLength(key) != sizeof(UserDevice)) return false;
   preferences.getBytes(key, &device, sizeof(device));
   return device.magic == DEVICE_MAGIC && device.schema == DEVICE_SCHEMA_VERSION &&
-         device.type <= USER_AIR_CONDITIONER;
+         device.type <= USER_THERMOSTAT;
 }
 
 bool saveUserDevice(uint8_t id, const UserDevice &device) {
@@ -114,8 +114,11 @@ const char *deviceTypeName(uint8_t type) {
   switch (type) {
     case USER_SWITCH: return "开关";
     case USER_FAN: return "风扇";
-    case USER_TELEVISION: return "电视";
-    case USER_AIR_CONDITIONER: return "空调";
+    case USER_TELEVISION: return "电视 / 机顶盒";
+    case USER_AIR_CONDITIONER: return "空调 / 冷暖设备";
+    case USER_LIGHT_BULB: return "灯";
+    case USER_OUTLET: return "插座";
+    case USER_THERMOSTAT: return "恒温器";
     default: return "未知";
   }
 }
@@ -126,6 +129,9 @@ const char *deviceTypeIcon(uint8_t type) {
     case USER_FAN: return "🌀";
     case USER_TELEVISION: return "📺";
     case USER_AIR_CONDITIONER: return "❄️";
+    case USER_LIGHT_BULB: return "💡";
+    case USER_OUTLET: return "🔌";
+    case USER_THERMOSTAT: return "🌡️";
     default: return "•";
   }
 }
@@ -162,8 +168,13 @@ uint8_t actionsForType(uint8_t type, const uint8_t *&actions) {
       ACTION_POWER, ACTION_TEMPERATURE_UP, ACTION_TEMPERATURE_DOWN,
       ACTION_MODE, ACTION_SPEED_UP, ACTION_SPEED_DOWN};
   if (type == USER_SWITCH) { actions = switchActions; return 1; }
+  if (type == USER_LIGHT_BULB) { actions = switchActions; return 1; }
+  if (type == USER_OUTLET) { actions = switchActions; return 1; }
   if (type == USER_FAN) { actions = fanActions; return 3; }
-  if (type == USER_AIR_CONDITIONER) { actions = airConditionerActions; return 6; }
+  if (type == USER_AIR_CONDITIONER || type == USER_THERMOSTAT) {
+    actions = airConditionerActions;
+    return 6;
+  }
   actions = televisionActions;
   return 10;
 }
@@ -257,13 +268,13 @@ void sendManagerPage() {
     html += "</section>";
   }
   html += F("<section><h2>新建设备</h2><form class='create-form' method='post' action='/create'><input name='name' maxlength='31' required placeholder='例如：客厅电视'>"
-            "<select name='type'><option value='0'>普通开关</option><option value='1'>风扇</option><option value='2'>电视</option><option value='3'>空调</option></select><button>创建并开始学习</button></form>"
+            "<select name='type'><option value='4'>灯（LightBulb）</option><option value='0'>开关（Switch）</option><option value='5'>插座（Outlet）</option><option value='1'>风扇（FanV2）</option><option value='3'>空调 / 冷暖设备（HeaterCooler）</option><option value='6'>恒温器（Thermostat）</option><option value='2'>电视 / 机顶盒（Television）</option></select><button>创建并开始学习</button></form>"
             "<p class='muted'>提示：带独立开/关按键的设备，目前请学习常用的“开关”键；状态无法由红外反向读取。</p></section>");
   html += F("<section><h2>系统维护</h2><p class='muted'>以下操作会立即重启 Hub。网络与 HomeKit 重置不会删除红外码；删除学习设备不会影响内置空调和机顶盒。</p>"
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定删除所有自建设备及学习码？此操作不可恢复。')\"><input type='hidden' name='action' value='clear-learned'><button class='danger'>删除所有学习设备</button></form>"
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定清除 Wi-Fi 配置并进入联网设置？')\"><input type='hidden' name='action' value='reset-network'><button class='warning'>重置网络</button></form>"
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定清除 HomeKit 配对？需要在家庭 App 中重新添加 Hub。')\"><input type='hidden' name='action' value='reset-homekit'><button class='warning'>重置 HomeKit</button></form></section>");
-  html += "<section class='about'><p class='muted'>红外 Hub v" + String(FIRMWARE_VERSION) + " · 编译于 " + String(FIRMWARE_BUILD_DATE) + "</p><p class='credit'>Coding by AI, loving by Neil</p></section></body></html>";
+  html += "<section class='about'><p class='muted'>红外 Hub v" + String(FIRMWARE_VERSION) + " · 编译于 " + String(FIRMWARE_BUILD_DATE) + "</p><p class='credit'>Coding with AI, Loving(❤️) by Neil's</p></section></body></html>";
   deviceServer.send(200, "text/html; charset=utf-8", html);
 }
 
@@ -274,7 +285,7 @@ void handleCreateDevice() {
   String name = deviceServer.arg("name");
   name.trim();
   int type = deviceServer.arg("type").toInt();
-  if (name.length() == 0 || type < USER_SWITCH || type > USER_AIR_CONDITIONER) {
+  if (name.length() == 0 || type < USER_SWITCH || type > USER_THERMOSTAT) {
     deviceServer.send(400, "text/plain; charset=utf-8", "设备名称或类型无效"); return;
   }
   for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
@@ -481,6 +492,33 @@ struct IRLearnedSwitch : Service::Switch {
   boolean update() override { return !on->updated() || sendUserCode(id, ACTION_POWER); }
 };
 
+struct IRLearnedLightBulb : Service::LightBulb {
+  uint8_t id;
+  SpanCharacteristic *on;
+  IRLearnedLightBulb(uint8_t id) : Service::LightBulb(), id(id) {
+    on = new Characteristic::On(0);
+  }
+  boolean update() override {
+    return !on->updated() || sendUserCode(id, ACTION_POWER);
+  }
+};
+
+struct IRLearnedOutlet : Service::Outlet {
+  uint8_t id;
+  SpanCharacteristic *on;
+  SpanCharacteristic *inUse;
+  IRLearnedOutlet(uint8_t id) : Service::Outlet(), id(id) {
+    on = new Characteristic::On(0);
+    inUse = new Characteristic::OutletInUse(0);
+  }
+  boolean update() override {
+    if (!on->updated()) return true;
+    if (!sendUserCode(id, ACTION_POWER)) return false;
+    inUse->setVal(on->getNewVal());
+    return true;
+  }
+};
+
 struct IRLearnedFan : Service::Fan {
   uint8_t id;
   SpanCharacteristic *active;
@@ -547,13 +585,53 @@ struct IRLearnedAirConditioner : Service::HeaterCooler {
   }
 };
 
+struct IRLearnedThermostat : Service::Thermostat {
+  uint8_t id;
+  SpanCharacteristic *currentState;
+  SpanCharacteristic *targetState;
+  SpanCharacteristic *currentTemperature;
+  SpanCharacteristic *targetTemperature;
+
+  IRLearnedThermostat(uint8_t id) : Service::Thermostat(), id(id) {
+    currentState = new Characteristic::CurrentHeatingCoolingState(0);
+    targetState = new Characteristic::TargetHeatingCoolingState(0);
+    targetState->setValidValues(3, 0, 1, 2);
+    currentTemperature = new Characteristic::CurrentTemperature(24);
+    targetTemperature = new Characteristic::TargetTemperature(24);
+    targetTemperature->setRange(16, 32, 1);
+    new Characteristic::TemperatureDisplayUnits(0);
+  }
+
+  boolean update() override {
+    if (targetState->updated()) {
+      uint8_t oldState = targetState->getVal();
+      uint8_t newState = targetState->getNewVal();
+      uint8_t action = (oldState == 0 || newState == 0) ? ACTION_POWER
+                                                        : ACTION_MODE;
+      if (!sendUserCode(id, action)) return false;
+      currentState->setVal(newState);
+      return true;
+    }
+    if (targetTemperature->updated()) {
+      float nextTemperature = targetTemperature->getNewVal<float>();
+      uint8_t action = nextTemperature > targetTemperature->getVal<float>()
+          ? ACTION_TEMPERATURE_UP : ACTION_TEMPERATURE_DOWN;
+      if (!sendUserCode(id, action)) return false;
+      currentTemperature->setVal(nextTemperature);
+    }
+    return true;
+  }
+};
+
 struct IRLearnedTelevision : Service::Television {
   uint8_t id;
   SpanCharacteristic *active;
   SpanCharacteristic *remoteKey;
-  IRLearnedTelevision(uint8_t id) : Service::Television(), id(id) {
+  IRLearnedTelevision(uint8_t id, const char *name) : Service::Television(), id(id) {
     active = new Characteristic::Active(0);
+    new Characteristic::ActiveIdentifier(1);
     remoteKey = new Characteristic::RemoteKey();
+    new Characteristic::ConfiguredName(name);
   }
   boolean update() override {
     if (active->updated()) return sendUserCode(id, ACTION_POWER);
@@ -596,13 +674,25 @@ void configureUserDevices() {
         new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
       if (device.type == USER_SWITCH) {
         new IRLearnedSwitch(id);
+      } else if (device.type == USER_LIGHT_BULB) {
+        new IRLearnedLightBulb(id);
+      } else if (device.type == USER_OUTLET) {
+        new IRLearnedOutlet(id);
       } else if (device.type == USER_FAN) {
         new IRLearnedFan(id);
       } else if (device.type == USER_AIR_CONDITIONER) {
         new IRLearnedAirConditioner(id);
+      } else if (device.type == USER_THERMOSTAT) {
+        new IRLearnedThermostat(id);
       } else {
+        SpanService *television =
+            (new IRLearnedTelevision(id, device.name))->setPrimary();
+        SpanService *input = new Service::InputSource();
+          new Characteristic::Identifier(1);
+          new Characteristic::ConfiguredName("机顶盒");
+          new Characteristic::IsConfigured(1);
         SpanService *speaker = new IRLearnedTelevisionSpeaker(id);
-        (new IRLearnedTelevision(id))->addLink(speaker);
+        television->addLink(input)->addLink(speaker);
       }
   }
 }

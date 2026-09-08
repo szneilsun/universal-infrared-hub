@@ -17,7 +17,7 @@ constexpr uint8_t IR_RECEIVE_PIN = 41;
 constexpr uint8_t IR_SEND_PIN = 40;
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
-constexpr char FIRMWARE_VERSION[] = "2.01";
+constexpr char FIRMWARE_VERSION[] = "2.0.2";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
@@ -345,9 +345,9 @@ void setup() {
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
   loadBuiltInDeviceConfig();
-  if (preferences.getUInt("hapSchema", 0) < 11) {
+  if (preferences.getUInt("hapSchema", 0) < 12) {
     homeSpan.forceNewConfigNumber();
-    preferences.putUInt("hapSchema", 11);
+    preferences.putUInt("hapSchema", 12);
   }
   homeSpan.setSerialInputDisable(true);
   homeSpan.setApSSID(AP_SSID);
