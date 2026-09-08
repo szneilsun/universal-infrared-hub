@@ -19,3 +19,9 @@ struct __attribute__((packed)) UserDevice {
   uint8_t enabled;
   char name[32];
 };
+
+void loadBuiltInDeviceConfig();
+bool isBuiltInDeviceEnabled(uint8_t device);
+const char *builtInDeviceName(uint8_t device);
+uint8_t builtInSetTopBoxCarrier();
+void setBuiltInSetTopBoxCarrier(uint8_t carrier);

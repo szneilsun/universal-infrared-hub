@@ -5,6 +5,60 @@ int8_t webLearningDevice = -1;
 int8_t webLearningAction = -1;
 uint32_t restartAt = 0;
 
+constexpr uint32_t BUILTIN_CONFIG_MAGIC = 0x49424332;  // "IBC2"
+enum BuiltInDevice : uint8_t { BUILTIN_AIR_CONDITIONER, BUILTIN_TELEVISION };
+struct __attribute__((packed)) BuiltInConfig {
+  uint32_t magic;
+  uint8_t airConditionerEnabled;
+  uint8_t televisionEnabled;
+  uint8_t setTopBoxCarrier;
+  char airConditionerName[32];
+  char televisionName[32];
+};
+BuiltInConfig builtInConfig = {};
+
+void setSetTopBoxCarrier(uint8_t carrier);
+void sendWebAirConditionerTest(uint8_t action);
+void sendWebTelevisionTest(uint8_t action);
+
+bool saveBuiltInDeviceConfig() {
+  return preferences.putBytes("builtins", &builtInConfig, sizeof(builtInConfig)) ==
+         sizeof(builtInConfig);
+}
+
+void loadBuiltInDeviceConfig() {
+  if (preferences.getBytesLength("builtins") == sizeof(builtInConfig))
+    preferences.getBytes("builtins", &builtInConfig, sizeof(builtInConfig));
+  if (builtInConfig.magic != BUILTIN_CONFIG_MAGIC) {
+    builtInConfig = {};
+    builtInConfig.magic = BUILTIN_CONFIG_MAGIC;
+    builtInConfig.airConditionerEnabled = 1;
+    builtInConfig.televisionEnabled = 1;
+    builtInConfig.setTopBoxCarrier = 38;
+    strncpy(builtInConfig.airConditionerName, "美菱空调", sizeof(builtInConfig.airConditionerName) - 1);
+    strncpy(builtInConfig.televisionName, "Pioneer机顶盒", sizeof(builtInConfig.televisionName) - 1);
+    saveBuiltInDeviceConfig();
+  }
+  setSetTopBoxCarrier(builtInConfig.setTopBoxCarrier);
+}
+
+bool isBuiltInDeviceEnabled(uint8_t device) {
+  return device == BUILTIN_AIR_CONDITIONER ? builtInConfig.airConditionerEnabled
+                                            : builtInConfig.televisionEnabled;
+}
+
+const char *builtInDeviceName(uint8_t device) {
+  return device == BUILTIN_AIR_CONDITIONER ? builtInConfig.airConditionerName
+                                            : builtInConfig.televisionName;
+}
+
+uint8_t builtInSetTopBoxCarrier() { return builtInConfig.setTopBoxCarrier; }
+
+void setBuiltInSetTopBoxCarrier(uint8_t carrier) {
+  builtInConfig.setTopBoxCarrier = carrier;
+  saveBuiltInDeviceConfig();
+}
+
 void deviceKey(uint8_t id, char *key, size_t keySize) {
   snprintf(key, keySize, "dev%u", id);
 }
@@ -118,7 +172,26 @@ String pageHeader() {
 
 void sendManagerPage() {
   String html = pageHeader();
-  html += F("<p class='muted'>在此新增遥控器、命名并逐键学习。完成后 Hub 将自动重启，新的设备会显示在 Apple 家庭 App。</p>");
+  html += F("<p class='muted'>在此管理内置与学习型遥控器。修改 HomeKit 配件名称或启用状态后，Hub 将自动重启并刷新家庭 App。</p>");
+  html += "<section><h2>" + htmlEscape(builtInDeviceName(BUILTIN_AIR_CONDITIONER)) + " <small>（内置：美菱 KKZM-4WB 空调）</small></h2>";
+  html += F("<p class='muted'>协议：38 kHz、120 bit；网页可测试开机、关机、显示屏切换。温度、模式及风速仍通过 Home App 控制。</p>");
+  html += "<form method='post' action='/builtin'><input type='hidden' name='id' value='0'><input name='name' maxlength='31' value='" + htmlEscape(builtInDeviceName(BUILTIN_AIR_CONDITIONER)) + "'>";
+  html += "<label><input type='checkbox' name='enabled'" + String(builtInConfig.airConditionerEnabled ? " checked" : "") + ">显示在 HomeKit</label><button>保存空调配置</button></form>";
+  html += F("<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='0'><button>测试开机</button></form>"
+            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='1'><button>测试关机</button></form>"
+            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='2'><button>测试显示屏</button></form></section>");
+  html += "<section><h2>" + htmlEscape(builtInDeviceName(BUILTIN_TELEVISION)) + " <small>（内置：Pioneer 机顶盒）</small></h2>";
+  html += F("<p class='muted'>协议：Pioneer NEC 与原始机顶盒按键时序；可选择原始时序载波频率。</p>");
+  html += "<form method='post' action='/builtin'><input type='hidden' name='id' value='1'><input name='name' maxlength='31' value='" + htmlEscape(builtInDeviceName(BUILTIN_TELEVISION)) + "'>";
+  html += "<label><input type='checkbox' name='enabled'" + String(builtInConfig.televisionEnabled ? " checked" : "") + ">显示在 HomeKit</label> <select name='carrier'>";
+  const uint8_t carriers[] = {38, 40, 36, 56};
+  for (uint8_t carrier : carriers) {
+    html += "<option value='" + String(carrier) + "'" + String(builtInSetTopBoxCarrier() == carrier ? " selected" : "") + ">" + String(carrier) + " kHz</option>";
+  }
+  html += F("</select><button>保存机顶盒配置</button></form>"
+            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='0'><button>测试电源</button></form>"
+            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='1'><button>测试音量+</button></form>"
+            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='2'><button>测试音量-</button></form></section>");
   for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
     UserDevice device;
     if (!loadUserDevice(id, device)) continue;
@@ -173,6 +246,49 @@ void handleCreateDevice() {
   deviceServer.send(409, "text/plain; charset=utf-8", "最多保存 8 个自定义设备");
 }
 
+void handleBuiltInDevice() {
+  int id = deviceServer.arg("id").toInt();
+  String name = deviceServer.arg("name");
+  name.trim();
+  if ((id != BUILTIN_AIR_CONDITIONER && id != BUILTIN_TELEVISION) || name.length() == 0) {
+    deviceServer.send(400, "text/plain; charset=utf-8", "内置设备配置无效"); return;
+  }
+  char *targetName = id == BUILTIN_AIR_CONDITIONER ? builtInConfig.airConditionerName : builtInConfig.televisionName;
+  name.toCharArray(targetName, 32);
+  if (id == BUILTIN_AIR_CONDITIONER) {
+    builtInConfig.airConditionerEnabled = deviceServer.hasArg("enabled");
+  } else {
+    int carrier = deviceServer.arg("carrier").toInt();
+    if (carrier != 36 && carrier != 38 && carrier != 40 && carrier != 56) {
+      deviceServer.send(400, "text/plain; charset=utf-8", "载波频率无效"); return;
+    }
+    builtInConfig.televisionEnabled = deviceServer.hasArg("enabled");
+    builtInConfig.setTopBoxCarrier = carrier;
+    setSetTopBoxCarrier(carrier);
+  }
+  if (!saveBuiltInDeviceConfig()) {
+    deviceServer.send(500, "text/plain; charset=utf-8", "保存失败"); return;
+  }
+  homeSpan.forceNewConfigNumber();
+  restartAt = millis() + 1200;
+  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
+                    "<section><h2>内置设备已保存</h2><p>Hub 正在重启并更新 HomeKit 配置。</p></section></body></html>");
+}
+
+void handleBuiltInTest() {
+  int id = deviceServer.arg("id").toInt();
+  int action = deviceServer.arg("action").toInt();
+  if (id == BUILTIN_AIR_CONDITIONER && action >= 0 && action <= 2) {
+    sendWebAirConditionerTest(action);
+  } else if (id == BUILTIN_TELEVISION && action >= 0 && action <= 2) {
+    sendWebTelevisionTest(action);
+  } else {
+    deviceServer.send(400, "text/plain; charset=utf-8", "测试动作无效"); return;
+  }
+  deviceServer.sendHeader("Location", "/");
+  deviceServer.send(303);
+}
+
 void handleLearn() {
   int id = deviceServer.arg("id").toInt();
   int action = deviceServer.arg("action").toInt();
@@ -210,6 +326,8 @@ void handlePublish() {
 void beginDeviceManager() {
   deviceServer.on("/", HTTP_GET, sendManagerPage);
   deviceServer.on("/create", HTTP_POST, handleCreateDevice);
+  deviceServer.on("/builtin", HTTP_POST, handleBuiltInDevice);
+  deviceServer.on("/builtintest", HTTP_POST, handleBuiltInTest);
   deviceServer.on("/learn", HTTP_POST, handleLearn);
   deviceServer.on("/publish", HTTP_POST, handlePublish);
   deviceServer.on("/status", HTTP_GET, []() {

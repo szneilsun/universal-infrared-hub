@@ -85,7 +85,7 @@ struct IRAirConditioner : Service::HeaterCooler {
     rotationSpeed = new Characteristic::RotationSpeed(20);
     rotationSpeed->setRange(20, 100, 20);
     displayToggle = new Characteristic::SwingMode(0);
-    new Characteristic::ConfiguredName("美菱空调");
+    new Characteristic::ConfiguredName(builtInDeviceName(0));
   }
 
   boolean update() override {
@@ -189,9 +189,15 @@ void configureAirConditionerAccessory() {
   new SpanAccessory();
     new Service::AccessoryInformation();
       new Characteristic::Identify();
-      new Characteristic::Name("美菱空调");
+      new Characteristic::Name(builtInDeviceName(0));
       new Characteristic::Manufacturer("ESP32 IR Hub");
       new Characteristic::Model("Meiling KKZM-4WB");
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
     new IRAirConditioner();
+}
+
+void sendWebAirConditionerTest(uint8_t action) {
+  if (action == 0) sendMeiling(240, MEILING_COOL, MEILING_POWER_ON);
+  else if (action == 1) sendMeiling(240, MEILING_COOL, MEILING_POWER_OFF);
+  else if (action == 2) sendMeiling(240, MEILING_COOL, MEILING_DISPLAY_TOGGLE);
 }

@@ -13,10 +13,20 @@ uint8_t getSetTopBoxCarrier() {
   return SET_TOP_BOX_CARRIERS_KHZ[setTopBoxCarrierIndex];
 }
 
+void setSetTopBoxCarrier(uint8_t carrier) {
+  for (uint8_t i = 0; i < sizeof(SET_TOP_BOX_CARRIERS_KHZ) / sizeof(SET_TOP_BOX_CARRIERS_KHZ[0]); ++i) {
+    if (SET_TOP_BOX_CARRIERS_KHZ[i] == carrier) {
+      setTopBoxCarrierIndex = i;
+      return;
+    }
+  }
+}
+
 uint8_t cycleSetTopBoxCarrier() {
   setTopBoxCarrierIndex =
       (setTopBoxCarrierIndex + 1) %
       (sizeof(SET_TOP_BOX_CARRIERS_KHZ) / sizeof(SET_TOP_BOX_CARRIERS_KHZ[0]));
+  setBuiltInSetTopBoxCarrier(getSetTopBoxCarrier());
   return getSetTopBoxCarrier();
 }
 
@@ -98,7 +108,7 @@ struct IRTelevision : Service::Television {
   IRTelevision() : Service::Television() {
     active = new Characteristic::Active(0);
     remoteKey = new Characteristic::RemoteKey();
-    new Characteristic::ConfiguredName("Pioneer机顶盒");
+    new Characteristic::ConfiguredName(builtInDeviceName(1));
   }
 
   boolean update() override {
@@ -149,10 +159,18 @@ void configureTelevisionAccessory() {
   new SpanAccessory();
     new Service::AccessoryInformation();
       new Characteristic::Identify();
-      new Characteristic::Name("Pioneer机顶盒");
+      new Characteristic::Name(builtInDeviceName(1));
       new Characteristic::Manufacturer("ESP32 IR Hub");
       new Characteristic::Model("Pioneer Set-top Box");
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
     SpanService *televisionSpeaker = new IRTelevisionSpeaker();
     (new IRTelevision())->addLink(televisionSpeaker);
+}
+
+void sendWebTelevisionTest(uint8_t action) {
+  switch (action) {
+    case 0: sendTelevisionCommand(TV_POWER); break;
+    case 1: sendTelevisionCommand(TV_VOLUME_UP); break;
+    case 2: sendTelevisionCommand(TV_VOLUME_DOWN); break;
+  }
 }

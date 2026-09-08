@@ -323,6 +323,7 @@ void setup() {
   IrSender.begin(IR_SEND_PIN, DISABLE_LED_FEEDBACK);
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
+  loadBuiltInDeviceConfig();
   if (preferences.getUInt("hapSchema", 0) < 10) {
     homeSpan.forceNewConfigNumber();
     preferences.putUInt("hapSchema", 10);
@@ -344,8 +345,8 @@ void setup() {
       new Characteristic::Model("ESP32-S3 IR Bridge");
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
 
-  configureAirConditionerAccessory();
-  configureTelevisionAccessory();
+  if (isBuiltInDeviceEnabled(0)) configureAirConditionerAccessory();
+  if (isBuiltInDeviceEnabled(1)) configureTelevisionAccessory();
   configureUserDevices();
   beginDeviceManager();
   printMainMenu();
