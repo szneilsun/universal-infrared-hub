@@ -73,7 +73,7 @@ bool loadUserDevice(uint8_t id, UserDevice &device) {
   if (preferences.getBytesLength(key) != sizeof(UserDevice)) return false;
   preferences.getBytes(key, &device, sizeof(device));
   return device.magic == DEVICE_MAGIC && device.schema == DEVICE_SCHEMA_VERSION &&
-         device.type <= USER_TELEVISION;
+         device.type <= USER_AIR_CONDITIONER;
 }
 
 bool saveUserDevice(uint8_t id, const UserDevice &device) {
@@ -249,7 +249,7 @@ void handleCreateDevice() {
   String name = deviceServer.arg("name");
   name.trim();
   int type = deviceServer.arg("type").toInt();
-  if (name.length() == 0 || type < USER_SWITCH || type > USER_TELEVISION) {
+  if (name.length() == 0 || type < USER_SWITCH || type > USER_AIR_CONDITIONER) {
     deviceServer.send(400, "text/plain; charset=utf-8", "设备名称或类型无效"); return;
   }
   for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
