@@ -283,6 +283,14 @@ void handleDeleteDevice() {
   if (id < 0 || id >= MAX_USER_DEVICES || !loadUserDevice(id, device)) {
     deviceServer.send(400, "text/plain; charset=utf-8", "无效设备"); return;
   }
+  removeUserDeviceData(id);
+  homeSpan.forceNewConfigNumber();
+  restartAt = millis() + 1200;
+  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
+                    "<section><h2>设备已删除</h2><p>红外学习码已清除，Hub 正在重启并更新 HomeKit 配置。</p></section></body></html>");
+}
+
+void removeUserDeviceData(uint8_t id) {
   char key[12];
   deviceKey(id, key, sizeof(key));
   preferences.remove(key);
@@ -290,10 +298,6 @@ void handleDeleteDevice() {
     deviceCodeKey(id, action, key, sizeof(key));
     preferences.remove(key);
   }
-  homeSpan.forceNewConfigNumber();
-  restartAt = millis() + 1200;
-  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
-                    "<section><h2>设备已删除</h2><p>红外学习码已清除，Hub 正在重启并更新 HomeKit 配置。</p></section></body></html>");
 }
 
 void clearAllLearnedData() {
@@ -303,12 +307,7 @@ void clearAllLearnedData() {
     preferences.remove(key);
   }
   for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
-    deviceKey(id, key, sizeof(key));
-    preferences.remove(key);
-    for (uint8_t action = 0; action < MAX_DEVICE_ACTIONS; ++action) {
-      deviceCodeKey(id, action, key, sizeof(key));
-      preferences.remove(key);
-    }
+    removeUserDeviceData(id);
   }
 }
 
@@ -428,7 +427,7 @@ void beginDeviceManager() {
     deviceServer.send(200, "application/json", isWebLearning() ? "{\"learning\":true}" : "{\"learning\":false}");
   });
   deviceServer.begin();
-  Serial.println("Device manager: http://<Hub IP>:8080");
+  Serial.println("Device manager: http://ir-hub.local:8080");
 }
 
 void pollDeviceManager() {

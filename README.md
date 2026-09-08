@@ -1,7 +1,7 @@
-# 美菱空调 HomeKit 红外控制器
+# ESP32 HomeKit 红外 Hub
 
 基于 ESP32-S3、HomeSpan 和 Arduino-IRremote，将使用 `KKZM-4WB` 遥控器的
-美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.00`，并支持
+美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.01`，并支持
 通过网页学习通用红外设备、动态创建 HomeKit 子配件。
 
 ## 项目结构
@@ -12,6 +12,9 @@ universal_ir_remote/
 ├── air_conditioner.ino      # 美菱空调协议与 HomeKit 服务
 ├── television.ino           # Pioneer 电视/机顶盒控制
 ├── dynamic_devices.ino      # 网页设备管理、学习码与动态 HomeKit 配件
+├── dynamic_devices.h        # 动态设备的数据模型与常量
+├── home_background.h        # 内嵌的网页居家背景资源
+├── assets/                  # 背景图源文件
 ├── docs/                    # 协议分析文档
 ├── CHANGELOG.md             # 版本变更记录
 └── README.md                # 使用与维护说明
@@ -28,6 +31,7 @@ universal_ir_remote/
 - 红外学习数据保存到 ESP32 非易失存储，断电后保留
 - 网页新建设备、命名、选择类型并逐键学习
 - 学习完成后为普通开关、风扇或电视创建独立的 Home App 设备
+- 自建设备可在网页删除；支持开关、风扇、电视和通用学习型空调
 
 遥控器没有独立的自动运行模式，因此 HomeKit 仅声明制冷和制热。如果家庭
 App 仍显示“自动”，通常是旧配件元数据缓存，需要关闭并重新打开家庭 App，
@@ -106,7 +110,7 @@ ESP32 与发射电源必须共地。推荐使用 940 nm 红外 LED，并在 5V �
 时序，在主菜单输入 `5` 即可开启或关闭，无需重新编译。
 `IR_CAPTURE_VERBOSE` 用于设置每次启动后的默认状态。
 
-## 网页学习与动态设备（2.0）
+## 网页学习与动态设备（2.01）
 
 Hub 接入家庭 Wi-Fi 后，在同一局域网浏览器打开：
 
@@ -143,6 +147,9 @@ Hub 会自动重启并刷新 HomeKit 配件列表。
 网页底部的“系统维护”提供三项独立操作：重置网络（仅清除 Wi-Fi）、重置
 HomeKit（仅清除配对）和删除所有学习设备（清除所有自建设备及其红外码）。
 每项操作均需确认并会重启 Hub。
+
+网页顶部会同时显示固定管理地址和当前 DHCP IPv4 地址。固定地址推荐收藏到
+Safari：`http://ir-hub.local:8080`。
 
 ## 已识别协议
 
