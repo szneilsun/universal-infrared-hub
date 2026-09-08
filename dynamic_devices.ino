@@ -164,14 +164,14 @@ String htmlEscape(const char *text) {
 }
 
 String pageHeader() {
-  return F("<!doctype html><html lang='zh-CN'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+  return F("<!doctype html><html lang='zh-CN'><meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover'>"
            "<title>红外 Hub · 家居控制</title><style>"
            ":root{--ink:#26342e;--muted:#728077;--sage:#718c7b;--sage-dark:#557062;--sage-pale:#dfe8e0;--canvas:#eef2ed;--card:rgba(255,255,252,.84);--line:#d5dfd6;--warm:#fafaf5}"
-           "*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Noto Sans SC',sans-serif;max-width:860px;margin:0 auto;padding:34px 20px 68px;color:var(--ink);background:linear-gradient(rgba(238,242,237,.82),rgba(238,242,237,.9)),url('/home-bg.jpg') center/cover fixed,var(--canvas);letter-spacing:.01em}"
+           "*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Noto Sans SC',sans-serif;max-width:860px;margin:0 auto;padding:calc(28px + env(safe-area-inset-top)) 20px calc(68px + env(safe-area-inset-bottom));color:var(--ink);background:linear-gradient(rgba(238,242,237,.82),rgba(238,242,237,.9)),url('/home-bg.jpg') center/cover fixed,var(--canvas);letter-spacing:.01em}"
            ".hero{padding:34px 30px 31px;border-radius:24px;background:linear-gradient(132deg,rgba(255,255,251,.94),rgba(224,235,225,.9));border:1px solid rgba(255,255,255,.8);box-shadow:0 14px 34px rgba(55,76,62,.1);position:relative;overflow:hidden}.hero:after{content:'';position:absolute;width:190px;height:190px;border:1px solid rgba(91,125,102,.2);border-radius:50%;right:-80px;top:-95px;box-shadow:-25px 27px 0 -1px rgba(91,125,102,.09)}"
            ".eyebrow{margin:0 0 9px;color:var(--sage-dark);font-size:12px;font-weight:700;letter-spacing:.14em}.hero h1{margin:0;font-family:ui-serif,Georgia,'Songti SC',serif;font-size:30px;letter-spacing:.04em;font-weight:600}.hero p{max-width:530px;margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.65;position:relative;z-index:1}"
            "section{border:1px solid var(--line);border-radius:20px;padding:27px 25px;margin:22px 0;background:var(--card);backdrop-filter:blur(7px);box-shadow:0 8px 24px rgba(45,65,52,.07)}section h2{font-family:ui-serif,Georgia,'Songti SC',serif;font-size:21px;font-weight:600;letter-spacing:.02em;margin:0 0 14px}section h2 small{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:0}.muted{color:var(--muted);font-size:14px;line-height:1.8}.ok{color:var(--sage-dark);font-size:14px;font-weight:600}"
-           "form{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:15px 0}form[style*='display:inline']{display:inline-flex;margin:8px 8px 0 0}button{appearance:none;background:var(--sage-dark);color:#fff;border:0;border-radius:10px;padding:11px 16px;min-height:42px;margin:0;font:600 14px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;letter-spacing:.01em;box-shadow:0 3px 7px rgba(51,76,61,.14)}button:active{transform:translateY(1px);background:#415b4d}input,select{font:15px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--ink);background:#fbfcf9;border:1px solid #cbd8cc;border-radius:9px;padding:11px 12px;min-height:42px;margin:0;max-width:100%}input:not([type=hidden]){min-width:176px}input[type=checkbox]{accent-color:var(--sage-dark);vertical-align:middle;min-width:auto;min-height:auto}label{font-size:14px;color:var(--muted);white-space:nowrap}a{color:var(--sage-dark);font-weight:600;text-decoration:none}@media(max-width:520px){body{padding:18px 13px 45px}.hero{padding:27px 22px}.hero h1{font-size:27px}section{padding:22px 18px;margin:17px 0}form{gap:8px}input:not([type=hidden]){width:100%;flex-basis:100%}button{padding:10px 13px;font-size:13px}}"
+           "form{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0}.config-form>input[name=name]{flex:1 1 220px}.action-form{display:inline-flex;margin:8px 8px 0 0}.publish-form{margin-top:14px}button{appearance:none;background:var(--sage-dark);color:#fff;border:0;border-radius:10px;padding:11px 16px;min-height:42px;margin:0;font:600 14px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;letter-spacing:.01em;box-shadow:0 3px 7px rgba(51,76,61,.14)}button:active{transform:translateY(1px);background:#415b4d}input,select{font:15px -apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;color:var(--ink);background:#fbfcf9;border:1px solid #cbd8cc;border-radius:9px;padding:11px 12px;min-height:42px;margin:0;max-width:100%}input[type=checkbox]{appearance:auto;accent-color:var(--sage-dark);width:22px!important;height:22px;min-width:22px!important;min-height:22px;flex:0 0 22px!important;padding:0;vertical-align:middle}label{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);white-space:nowrap}a{color:var(--sage-dark);font-weight:600;text-decoration:none}@media(max-width:520px){body{padding:calc(22px + env(safe-area-inset-top)) 13px calc(45px + env(safe-area-inset-bottom))}.hero{padding:27px 22px}.hero h1{font-size:27px}section{padding:22px 18px;margin:17px 0}.config-form,.create-form{flex-direction:column;align-items:stretch;gap:12px}.config-form>input[name=name],.config-form select,.config-form button,.create-form input[name=name],.create-form select,.create-form button{width:100%;flex:0 0 auto}.config-form label{width:100%;min-height:42px}.action-form{display:flex;width:100%;margin:8px 0 0}.action-form button,.publish-form button{width:100%}button{padding:11px 13px;font-size:14px}}"
            "</style><body><header class='hero'><p class='eyebrow'>IR HUB · HOME EDITION</p><h1>家居控制中心</h1><p>把熟悉的遥控器，安静地收进你的日常生活。</p></header>");
 }
 
@@ -180,23 +180,23 @@ void sendManagerPage() {
   html += F("<p class='muted'>在此管理内置与学习型遥控器。修改 HomeKit 配件名称或启用状态后，Hub 将自动重启并刷新家庭 App。</p>");
   html += "<section><h2>" + htmlEscape(builtInDeviceName(BUILTIN_AIR_CONDITIONER)) + " <small>（内置：美菱 KKZM-4WB 空调）</small></h2>";
   html += F("<p class='muted'>协议：38 kHz、120 bit；网页可测试开机、关机、显示屏切换。温度、模式及风速仍通过 Home App 控制。</p>");
-  html += "<form method='post' action='/builtin'><input type='hidden' name='id' value='0'><input name='name' maxlength='31' value='" + htmlEscape(builtInDeviceName(BUILTIN_AIR_CONDITIONER)) + "'>";
+  html += "<form class='config-form' method='post' action='/builtin'><input type='hidden' name='id' value='0'><input name='name' maxlength='31' value='" + htmlEscape(builtInDeviceName(BUILTIN_AIR_CONDITIONER)) + "'>";
   html += "<label><input type='checkbox' name='enabled'" + String(builtInConfig.airConditionerEnabled ? " checked" : "") + ">显示在 HomeKit</label><button>保存空调配置</button></form>";
-  html += F("<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='0'><button>测试开机</button></form>"
-            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='1'><button>测试关机</button></form>"
-            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='2'><button>测试显示屏</button></form></section>");
+  html += F("<form class='action-form' method='post' action='/builtintest'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='0'><button>测试开机</button></form>"
+            "<form class='action-form' method='post' action='/builtintest'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='1'><button>测试关机</button></form>"
+            "<form class='action-form' method='post' action='/builtintest'><input type='hidden' name='id' value='0'><input type='hidden' name='action' value='2'><button>测试显示屏</button></form></section>");
   html += "<section><h2>" + htmlEscape(builtInDeviceName(BUILTIN_TELEVISION)) + " <small>（内置：Pioneer 机顶盒）</small></h2>";
   html += F("<p class='muted'>协议：Pioneer NEC 与原始机顶盒按键时序；可选择原始时序载波频率。</p>");
-  html += "<form method='post' action='/builtin'><input type='hidden' name='id' value='1'><input name='name' maxlength='31' value='" + htmlEscape(builtInDeviceName(BUILTIN_TELEVISION)) + "'>";
+  html += "<form class='config-form' method='post' action='/builtin'><input type='hidden' name='id' value='1'><input name='name' maxlength='31' value='" + htmlEscape(builtInDeviceName(BUILTIN_TELEVISION)) + "'>";
   html += "<label><input type='checkbox' name='enabled'" + String(builtInConfig.televisionEnabled ? " checked" : "") + ">显示在 HomeKit</label> <select name='carrier'>";
   const uint8_t carriers[] = {38, 40, 36, 56};
   for (uint8_t carrier : carriers) {
     html += "<option value='" + String(carrier) + "'" + String(builtInSetTopBoxCarrier() == carrier ? " selected" : "") + ">" + String(carrier) + " kHz</option>";
   }
   html += F("</select><button>保存机顶盒配置</button></form>"
-            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='0'><button>测试电源</button></form>"
-            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='1'><button>测试音量+</button></form>"
-            "<form method='post' action='/builtintest' style='display:inline'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='2'><button>测试音量-</button></form></section>");
+            "<form class='action-form' method='post' action='/builtintest'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='0'><button>测试电源</button></form>"
+            "<form class='action-form' method='post' action='/builtintest'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='1'><button>测试音量+</button></form>"
+            "<form class='action-form' method='post' action='/builtintest'><input type='hidden' name='id' value='1'><input type='hidden' name='action' value='2'><button>测试音量-</button></form></section>");
   for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
     UserDevice device;
     if (!loadUserDevice(id, device)) continue;
@@ -207,17 +207,17 @@ void sendManagerPage() {
     for (uint8_t i = 0; i < count; ++i) {
       LearnedCode code;
       bool learned = loadUserCode(id, actions[i], code);
-      html += "<form method='post' action='/learn' style='display:inline'><input type='hidden' name='id' value='" + String(id) + "'><input type='hidden' name='action' value='" + String(actions[i]) + "'><button>";
+      html += "<form class='action-form' method='post' action='/learn'><input type='hidden' name='id' value='" + String(id) + "'><input type='hidden' name='action' value='" + String(actions[i]) + "'><button>";
       html += learned ? "重新学习：" : "学习：";
       html += actionName(actions[i]);
       html += "</button></form>";
     }
     if (!device.enabled) {
-      html += "<form method='post' action='/publish'><input type='hidden' name='id' value='" + String(id) + "'><button>完成并发布此设备</button></form>";
+      html += "<form class='publish-form' method='post' action='/publish'><input type='hidden' name='id' value='" + String(id) + "'><button>完成并发布此设备</button></form>";
     }
     html += "</section>";
   }
-  html += F("<section><h2>新建设备</h2><form method='post' action='/create'><input name='name' maxlength='31' required placeholder='例如：客厅电视'>"
+  html += F("<section><h2>新建设备</h2><form class='create-form' method='post' action='/create'><input name='name' maxlength='31' required placeholder='例如：客厅电视'>"
             "<select name='type'><option value='0'>普通开关</option><option value='1'>风扇</option><option value='2'>电视</option></select><button>创建并开始学习</button></form>"
             "<p class='muted'>提示：带独立开/关按键的设备，目前请学习常用的“开关”键；状态无法由红外反向读取。</p></section></body></html>");
   deviceServer.send(200, "text/html; charset=utf-8", html);
