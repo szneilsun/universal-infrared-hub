@@ -345,9 +345,9 @@ void setup() {
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
   loadBuiltInDeviceConfig();
-  if (preferences.getUInt("hapSchema", 0) < 10) {
+  if (preferences.getUInt("hapSchema", 0) < 11) {
     homeSpan.forceNewConfigNumber();
-    preferences.putUInt("hapSchema", 10);
+    preferences.putUInt("hapSchema", 11);
   }
   homeSpan.setSerialInputDisable(true);
   homeSpan.setApSSID(AP_SSID);

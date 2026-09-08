@@ -163,8 +163,10 @@ void configureTelevisionAccessory() {
       new Characteristic::Manufacturer("ESP32 IR Hub");
       new Characteristic::Model("Pioneer Set-top Box");
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
-    SpanService *televisionSpeaker = new IRTelevisionSpeaker();
-    (new IRTelevision())->addLink(televisionSpeaker);
+    // Create Television first so HomeKit identifies this bridged accessory as
+    // a TV instead of treating its linked speaker as the primary service.
+    SpanService *television = new IRTelevision();
+    television->addLink(new IRTelevisionSpeaker());
 }
 
 void sendWebTelevisionTest(uint8_t action) {
