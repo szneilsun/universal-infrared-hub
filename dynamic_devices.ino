@@ -193,6 +193,24 @@ String pageHeader() {
            "</style><body><header class='hero'><p class='eyebrow'>IR HUB · HOME EDITION</p><h1>家居控制中心</h1><p>把熟悉的遥控器，安静地收进你的日常生活。</p></header>");
 }
 
+// Keep the browser on a small waiting page while HomeSpan restarts.  Navigating
+// immediately would leave the user on a browser error page if the Hub is still
+// booting, so this page polls until the web server is reachable again.
+String restartingPage(const String &title, const String &message, bool returnToManager = true) {
+  String html = pageHeader();
+  html += "<section><h2>" + title + "</h2><p>" + message + "</p>";
+  if (returnToManager) {
+    html += F("<p id='restart-state' class='muted'>正在等待 Hub 重新上线，完成后将自动返回设备管理页…</p>"
+              "<script>const state=document.getElementById('restart-state');let attempts=0;"
+              "function reconnect(){fetch('/status?_='+Date.now(),{cache:'no-store'}).then(r=>{"
+              "if(!r.ok)throw new Error();location.replace('/');}).catch(()=>{attempts++;"
+              "state.textContent=attempts>2?'Hub 仍在启动，请稍候…':'Hub 正在重启，请稍候…';"
+              "setTimeout(reconnect,1000);});}setTimeout(reconnect,2200);</script>");
+  }
+  html += F("</section></body></html>");
+  return html;
+}
+
 void sendManagerPage() {
   String html = pageHeader();
   String ipAddress = WiFi.localIP().toString();
@@ -286,8 +304,8 @@ void handleDeleteDevice() {
   removeUserDeviceData(id);
   homeSpan.forceNewConfigNumber();
   restartAt = millis() + 1200;
-  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
-                    "<section><h2>设备已删除</h2><p>红外学习码已清除，Hub 正在重启并更新 HomeKit 配置。</p></section></body></html>");
+  deviceServer.send(200, "text/html; charset=utf-8",
+                    restartingPage("设备已删除", "红外学习码已清除，Hub 正在重启并更新 HomeKit 配置。"));
 }
 
 void removeUserDeviceData(uint8_t id) {
@@ -328,9 +346,9 @@ void handleMaintenance() {
     deviceServer.send(400, "text/plain; charset=utf-8", "未知维护操作"); return;
   }
   restartAt = millis() + 1200;
-  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
-                    "<section><h2>操作完成</h2><p>" + String(message) +
-                    "Hub 正在重启。</p></section></body></html>");
+  bool canReturnToManager = action != "reset-network";
+  deviceServer.send(200, "text/html; charset=utf-8",
+                    restartingPage("操作完成", String(message) + "Hub 正在重启。", canReturnToManager));
 }
 
 void handleBuiltInDevice() {
@@ -358,8 +376,8 @@ void handleBuiltInDevice() {
   }
   homeSpan.forceNewConfigNumber();
   restartAt = millis() + 1200;
-  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
-                    "<section><h2>内置设备已保存</h2><p>Hub 正在重启并更新 HomeKit 配置。</p></section></body></html>");
+  deviceServer.send(200, "text/html; charset=utf-8",
+                    restartingPage("内置设备已保存", "Hub 正在重启并更新 HomeKit 配置。"));
 }
 
 void handleBuiltInTest() {
@@ -406,8 +424,8 @@ void handlePublish() {
   }
   homeSpan.forceNewConfigNumber();
   restartAt = millis() + 1200;
-  deviceServer.send(200, "text/html; charset=utf-8", pageHeader() +
-                    "<section><h2>已发布</h2><p>Hub 正在重启并更新 HomeKit 配置。请稍候。</p></section></body></html>");
+  deviceServer.send(200, "text/html; charset=utf-8",
+                    restartingPage("已发布", "Hub 正在重启并更新 HomeKit 配置。请稍候。"));
 }
 
 void beginDeviceManager() {
