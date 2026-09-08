@@ -4,6 +4,7 @@
 #include <Preferences.h>
 #include <HomeSpan.h>
 #include <WebServer.h>
+#include <WiFi.h>
 #include <nvs.h>
 #include "dynamic_devices.h"
 #include "home_background.h"
@@ -55,6 +56,13 @@ void resetNetworkConfiguration();
 void resetHomeKitConfiguration();
 uint8_t cycleSetTopBoxCarrier();
 uint8_t getSetTopBoxCarrier();
+
+void announceNetworkConnection(int count) {
+  String ip = WiFi.localIP().toString();
+  Serial.printf("\n=== IR Hub network ready (connection %d) ===\n", count);
+  Serial.printf("Open: http://ir-hub.local:8080\n");
+  Serial.printf("IPv4: http://%s:8080\n", ip.c_str());
+}
 
 void waitForIrTransmitter() {
   constexpr uint32_t MINIMUM_QUIET_TIME_MS = 350;
@@ -348,7 +356,9 @@ void setup() {
   homeSpan.enableAutoStartAP();
   homeSpan.setPairingCode(HOMEKIT_PAIRING_CODE);
   homeSpan.setSketchVersion(FIRMWARE_VERSION);
-  homeSpan.begin(Category::Bridges, "红外 Hub");
+  homeSpan.setHostNameSuffix("");
+  homeSpan.setConnectionCallback(announceNetworkConnection);
+  homeSpan.begin(Category::Bridges, "红外 Hub", "ir-hub");
 
   new SpanAccessory();
     new Service::AccessoryInformation();
