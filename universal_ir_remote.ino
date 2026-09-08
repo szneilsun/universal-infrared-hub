@@ -3,7 +3,9 @@
 #include <IRremote.hpp>
 #include <Preferences.h>
 #include <HomeSpan.h>
+#include <WebServer.h>
 #include <nvs.h>
+#include "dynamic_devices.h"
 
 #ifndef IR_CAPTURE_VERBOSE
 #define IR_CAPTURE_VERBOSE 1
@@ -13,7 +15,7 @@ constexpr uint8_t IR_RECEIVE_PIN = 41;
 constexpr uint8_t IR_SEND_PIN = 40;
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
-constexpr char FIRMWARE_VERSION[] = "1.01";
+constexpr char FIRMWARE_VERSION[] = "2.00";
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
 constexpr char HOMEKIT_PAIRING_CODE[] = "11122333";
@@ -42,6 +44,11 @@ uint32_t lastIrTransmissionFinishedAt = 0;
 
 void configureAirConditionerAccessory();
 void configureTelevisionAccessory();
+void configureUserDevices();
+void beginDeviceManager();
+void pollDeviceManager();
+bool isWebLearning();
+void saveWebLearnedCode(const IRData &signal);
 uint8_t cycleSetTopBoxCarrier();
 uint8_t getSetTopBoxCarrier();
 
@@ -290,7 +297,14 @@ void processIR() {
     return;
   }
   printReceivedCode(signal);
-  if (consoleMode == LEARN_WAIT_IR && !(signal.flags & IRDATA_FLAGS_IS_REPEAT)) {
+  if (isWebLearning() && !(signal.flags & IRDATA_FLAGS_IS_REPEAT)) {
+    if (isSupportedForStorage(signal)) {
+      saveWebLearnedCode(signal);
+    } else {
+      Serial.println("Web learning: unsupported raw protocol.");
+    }
+  } else if (consoleMode == LEARN_WAIT_IR &&
+             !(signal.flags & IRDATA_FLAGS_IS_REPEAT)) {
     if (isSupportedForStorage(signal)) {
       saveCode((uint8_t)pendingSlot, signal);
       consoleMode = LEARN_SELECT_SLOT;
@@ -309,9 +323,9 @@ void setup() {
   IrSender.begin(IR_SEND_PIN, DISABLE_LED_FEEDBACK);
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
-  if (preferences.getUInt("hapSchema", 0) < 9) {
+  if (preferences.getUInt("hapSchema", 0) < 10) {
     homeSpan.forceNewConfigNumber();
-    preferences.putUInt("hapSchema", 9);
+    preferences.putUInt("hapSchema", 10);
   }
   homeSpan.setSerialInputDisable(true);
   homeSpan.setApSSID(AP_SSID);
@@ -332,11 +346,14 @@ void setup() {
 
   configureAirConditionerAccessory();
   configureTelevisionAccessory();
+  configureUserDevices();
+  beginDeviceManager();
   printMainMenu();
 }
 
 void loop() {
   homeSpan.poll();
+  pollDeviceManager();
   readSerialCommands();
   processIR();
 }
