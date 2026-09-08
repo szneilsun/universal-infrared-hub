@@ -6,6 +6,7 @@
 #include <WebServer.h>
 #include <nvs.h>
 #include "dynamic_devices.h"
+#include "home_background.h"
 
 #ifndef IR_CAPTURE_VERBOSE
 #define IR_CAPTURE_VERBOSE 1
