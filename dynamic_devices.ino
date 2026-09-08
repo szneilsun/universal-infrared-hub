@@ -120,6 +120,16 @@ const char *deviceTypeName(uint8_t type) {
   }
 }
 
+const char *deviceTypeIcon(uint8_t type) {
+  switch (type) {
+    case USER_SWITCH: return "⏻";
+    case USER_FAN: return "🌀";
+    case USER_TELEVISION: return "📺";
+    case USER_AIR_CONDITIONER: return "❄️";
+    default: return "•";
+  }
+}
+
 const char *actionName(uint8_t action) {
   switch (action) {
     case ACTION_POWER: return "电源 / 开关";
@@ -208,7 +218,7 @@ void sendManagerPage() {
   for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
     UserDevice device;
     if (!loadUserDevice(id, device)) continue;
-    html += "<section><h2>" + htmlEscape(device.name) + " <small>（" + deviceTypeName(device.type) + "）</small></h2>";
+    html += "<section><h2>" + htmlEscape(device.name) + " <small>（" + deviceTypeName(device.type) + " · <span class='type-icon' aria-hidden='true'>" + deviceTypeIcon(device.type) + "</span>）</small></h2>";
     html += device.enabled ? "<p class='ok'>已发布到 HomeKit</p>" : "<p class='muted'>配置中，尚未发布</p>";
     const uint8_t *actions;
     uint8_t count = actionsForType(device.type, actions);
