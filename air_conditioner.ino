@@ -64,9 +64,16 @@ bool sendMeiling(uint16_t temperatureTenths, MeilingMode mode,
       : action == MEILING_MODE ? "mode"
       : action == MEILING_DISPLAY_TOGGLE ? "display-toggle"
       : action == MEILING_FAN_SPEED ? "fan-speed" : "temperature";
-  Serial.printf("Meiling: action=%s, mode=%s, temperature=%u.%u C, checksum=0x%02X\n",
-                actionName, mode == MEILING_HEAT ? "heat" : "cool",
-                wholeDegrees, tenths, frame[14]);
+  if (action == MEILING_FAN_SPEED) {
+    Serial.printf("Meiling: action=%s, mode=%s, temperature=%u.%u C, "
+                  "fan-level=%u/5, checksum=0x%02X\n",
+                  actionName, mode == MEILING_HEAT ? "heat" : "cool",
+                  wholeDegrees, tenths, constrain(fanLevel, 1, 5), frame[14]);
+  } else {
+    Serial.printf("Meiling: action=%s, mode=%s, temperature=%u.%u C, checksum=0x%02X\n",
+                  actionName, mode == MEILING_HEAT ? "heat" : "cool",
+                  wholeDegrees, tenths, frame[14]);
+  }
   waitForIrTransmitter();
   IrSender.sendPulseDistanceWidthFromArray(
       38, 8450, 4200, 550, 1600, 550, 550, rawData, 120,
@@ -85,7 +92,8 @@ struct IRAirConditioner : Service::HeaterCooler {
   SpanCharacteristic *rotationSpeed;
   SpanCharacteristic *displayToggle;
   bool restoreActiveAfterFanChange = false;
-  uint32_t lastFanCommandAt = 0;
+  bool syncFanSpeedAfterUpdate = false;
+  uint32_t zeroSpeedCommandAt = 0;
   uint8_t fanLevel;
 
   IRAirConditioner() : Service::HeaterCooler() {
@@ -107,6 +115,9 @@ struct IRAirConditioner : Service::HeaterCooler {
   }
 
   boolean update() override {
+    bool activeChanged = active->updated() &&
+                         active->getNewVal() != active->getVal();
+
     if (!active->getVal() && active->updated() && active->getNewVal() &&
         (rotationSpeed->updated() || displayToggle->updated())) {
       Serial.println("Ignored fan/display change while air conditioner is off.");
@@ -132,22 +143,24 @@ struct IRAirConditioner : Service::HeaterCooler {
         (uint16_t)(requestedTemperature * 10.0f + 0.5f);
 
     if (rotationSpeed->updated() && active->updated() && !active->getNewVal()) {
-      fanLevel = fanLevelForSpeed(rotationSpeed->getNewVal<float>());
+      float requestedSpeed = rotationSpeed->getNewVal<float>();
+      fanLevel = fanLevelForSpeed(requestedSpeed);
       if (!sendMeiling(temperatureTenths, mode, MEILING_FAN_SPEED, fanLevel))
         return false;
-      rotationSpeed->setVal(fanLevel * 20);
+      syncFanSpeedAfterUpdate = true;
       saveMeilingFanLevel(fanLevel);
-      lastFanCommandAt = millis();
+      if (fanLevel == 1) zeroSpeedCommandAt = millis();
       currentState->setVal(mode == MEILING_HEAT ? 2 : 3);
       currentTemperature->setVal(requestedTemperature);
       restoreActiveAfterFanChange = true;
       return true;
     }
 
-    if (active->updated() && lastFanCommandAt != 0 &&
-        millis() - lastFanCommandAt < 1500) {
-      Serial.println("Ignored HomeKit power sync immediately after fan change.");
-      return false;
+    if (activeChanged && !active->getNewVal() && zeroSpeedCommandAt != 0 &&
+        millis() - zeroSpeedCommandAt < 3000) {
+      Serial.println("HomeKit minimum fan speed: keeping air conditioner active.");
+      restoreActiveAfterFanChange = true;
+      return true;
     }
 
     if (coolingThreshold->updated() || heatingThreshold->updated()) {
@@ -159,7 +172,7 @@ struct IRAirConditioner : Service::HeaterCooler {
         heatingThreshold->setVal(requestedTemperature);
     }
 
-    if (active->updated()) {
+    if (activeChanged) {
       bool turnOn = active->getNewVal();
       if (!sendMeiling(temperatureTenths, mode,
                        turnOn ? MEILING_POWER_ON : MEILING_POWER_OFF)) return false;
@@ -180,13 +193,14 @@ struct IRAirConditioner : Service::HeaterCooler {
           !sendMeiling(temperatureTenths, mode, MEILING_STATE)) return false;
       currentTemperature->setVal(requestedTemperature);
     } else if (rotationSpeed->updated()) {
-      fanLevel = fanLevelForSpeed(rotationSpeed->getNewVal<float>());
+      float requestedSpeed = rotationSpeed->getNewVal<float>();
+      fanLevel = fanLevelForSpeed(requestedSpeed);
       if (active->getVal() &&
           !sendMeiling(temperatureTenths, mode, MEILING_FAN_SPEED, fanLevel))
         return false;
-      rotationSpeed->setVal(fanLevel * 20);
+      syncFanSpeedAfterUpdate = true;
       saveMeilingFanLevel(fanLevel);
-      lastFanCommandAt = millis();
+      if (fanLevel == 1) zeroSpeedCommandAt = millis();
     } else if (displayToggle->updated()) {
       if (active->getVal() &&
           !sendMeiling(temperatureTenths, mode, MEILING_DISPLAY_TOGGLE))
@@ -196,8 +210,14 @@ struct IRAirConditioner : Service::HeaterCooler {
   }
 
   void loop() override {
-    if (restoreActiveAfterFanChange && !active->getVal()) {
-      active->setVal(1, false);
+    if (syncFanSpeedAfterUpdate) {
+      float snappedSpeed = fanLevel * 20;
+      if (rotationSpeed->getVal<float>() != snappedSpeed)
+        rotationSpeed->setVal(snappedSpeed);
+      syncFanSpeedAfterUpdate = false;
+    }
+    if (restoreActiveAfterFanChange) {
+      if (!active->getVal()) active->setVal(1);
       restoreActiveAfterFanChange = false;
     }
   }
