@@ -6,6 +6,22 @@ enum MeilingAction : uint8_t {
   MEILING_DISPLAY_TOGGLE, MEILING_FAN_SPEED
 };
 
+constexpr char MEILING_FAN_LEVEL_KEY[] = "ac-fan";
+
+uint8_t fanLevelForSpeed(float speed) {
+  // Home App submits an arbitrary percentage while dragging.  The Meiling
+  // remote only has five real levels, so always select the nearest level.
+  return constrain((uint8_t)(speed / 20.0f + 0.5f), 1, 5);
+}
+
+uint8_t loadMeilingFanLevel() {
+  return constrain(preferences.getUChar(MEILING_FAN_LEVEL_KEY, 1), 1, 5);
+}
+
+void saveMeilingFanLevel(uint8_t level) {
+  preferences.putUChar(MEILING_FAN_LEVEL_KEY, constrain(level, 1, 5));
+}
+
 uint8_t meilingChecksum(const uint8_t *data, size_t length) {
   uint8_t sum = 0;
   for (size_t i = 0; i < length; ++i)
@@ -70,6 +86,7 @@ struct IRAirConditioner : Service::HeaterCooler {
   SpanCharacteristic *displayToggle;
   bool restoreActiveAfterFanChange = false;
   uint32_t lastFanCommandAt = 0;
+  uint8_t fanLevel;
 
   IRAirConditioner() : Service::HeaterCooler() {
     active = new Characteristic::Active(0);
@@ -82,7 +99,8 @@ struct IRAirConditioner : Service::HeaterCooler {
     heatingThreshold = new Characteristic::HeatingThresholdTemperature(20);
     heatingThreshold->setRange(16, 32, 0.1);
     new Characteristic::TemperatureDisplayUnits(0);
-    rotationSpeed = new Characteristic::RotationSpeed(20);
+    fanLevel = loadMeilingFanLevel();
+    rotationSpeed = new Characteristic::RotationSpeed(fanLevel * 20);
     rotationSpeed->setRange(20, 100, 20);
     displayToggle = new Characteristic::SwingMode(0);
     new Characteristic::ConfiguredName(builtInDeviceName(0));
@@ -114,11 +132,11 @@ struct IRAirConditioner : Service::HeaterCooler {
         (uint16_t)(requestedTemperature * 10.0f + 0.5f);
 
     if (rotationSpeed->updated() && active->updated() && !active->getNewVal()) {
-      uint8_t fanLevel =
-          (uint8_t)(rotationSpeed->getNewVal<float>() / 20.0f + 0.5f);
-      fanLevel = constrain(fanLevel, 1, 5);
+      fanLevel = fanLevelForSpeed(rotationSpeed->getNewVal<float>());
       if (!sendMeiling(temperatureTenths, mode, MEILING_FAN_SPEED, fanLevel))
         return false;
+      rotationSpeed->setVal(fanLevel * 20);
+      saveMeilingFanLevel(fanLevel);
       lastFanCommandAt = millis();
       currentState->setVal(mode == MEILING_HEAT ? 2 : 3);
       currentTemperature->setVal(requestedTemperature);
@@ -162,12 +180,12 @@ struct IRAirConditioner : Service::HeaterCooler {
           !sendMeiling(temperatureTenths, mode, MEILING_STATE)) return false;
       currentTemperature->setVal(requestedTemperature);
     } else if (rotationSpeed->updated()) {
-      uint8_t fanLevel =
-          (uint8_t)(rotationSpeed->getNewVal<float>() / 20.0f + 0.5f);
-      fanLevel = constrain(fanLevel, 1, 5);
+      fanLevel = fanLevelForSpeed(rotationSpeed->getNewVal<float>());
       if (active->getVal() &&
           !sendMeiling(temperatureTenths, mode, MEILING_FAN_SPEED, fanLevel))
         return false;
+      rotationSpeed->setVal(fanLevel * 20);
+      saveMeilingFanLevel(fanLevel);
       lastFanCommandAt = millis();
     } else if (displayToggle->updated()) {
       if (active->getVal() &&
