@@ -665,7 +665,7 @@ void configureUserDevices() {
   for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
     UserDevice device;
     if (!loadUserDevice(id, device) || !device.enabled) continue;
-    new SpanAccessory();
+    new SpanAccessory(USER_DEVICE_AID_BASE + id);
       new Service::AccessoryInformation();
         new Characteristic::Identify();
         new Characteristic::Name(device.name);

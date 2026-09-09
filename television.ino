@@ -157,7 +157,7 @@ struct IRTelevisionSpeaker : Service::TelevisionSpeaker {
 };
 
 void configureTelevisionAccessory() {
-  new SpanAccessory();
+  new SpanAccessory(TELEVISION_AID);
     new Service::AccessoryInformation();
       new Characteristic::Identify();
       new Characteristic::Name(builtInDeviceName(1));

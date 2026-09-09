@@ -17,7 +17,11 @@ constexpr uint8_t IR_RECEIVE_PIN = 41;
 constexpr uint8_t IR_SEND_PIN = 40;
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
-constexpr char FIRMWARE_VERSION[] = "2.0.8";
+constexpr uint32_t HUB_AID = 1;
+constexpr uint32_t AIR_CONDITIONER_AID = 2;
+constexpr uint32_t TELEVISION_AID = 3;
+constexpr uint32_t USER_DEVICE_AID_BASE = 4;
+constexpr char FIRMWARE_VERSION[] = "2.0.9";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
@@ -345,9 +349,9 @@ void setup() {
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
   loadBuiltInDeviceConfig();
-  if (preferences.getUInt("hapSchema", 0) < 12) {
+  if (preferences.getUInt("hapSchema", 0) < 13) {
     homeSpan.forceNewConfigNumber();
-    preferences.putUInt("hapSchema", 12);
+    preferences.putUInt("hapSchema", 13);
   }
   homeSpan.setSerialInputDisable(true);
   homeSpan.setApSSID(AP_SSID);
@@ -360,7 +364,7 @@ void setup() {
   homeSpan.setConnectionCallback(announceNetworkConnection);
   homeSpan.begin(Category::Bridges, "红外 Hub", "ir-hub");
 
-  new SpanAccessory();
+  new SpanAccessory(HUB_AID);
     new Service::AccessoryInformation();
       new Characteristic::Identify();
       new Characteristic::Name("红外 Hub");

@@ -224,7 +224,7 @@ struct IRAirConditioner : Service::HeaterCooler {
 };
 
 void configureAirConditionerAccessory() {
-  new SpanAccessory();
+  new SpanAccessory(AIR_CONDITIONER_AID);
     new Service::AccessoryInformation();
       new Characteristic::Identify();
       new Characteristic::Name(builtInDeviceName(0));
