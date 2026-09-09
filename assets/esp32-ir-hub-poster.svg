@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1242" height="1660" viewBox="0 0 1242 1660">
+  <defs>
+    <linearGradient id="wash" x1="0" y1="0" x2="0.92" y2="1">
+      <stop offset="0" stop-color="#e8eee7" stop-opacity="0.56"/>
+      <stop offset="0.5" stop-color="#eff3ed" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#dce5dd" stop-opacity="0.98"/>
+    </linearGradient>
+    <linearGradient id="device" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#26322f"/>
+      <stop offset="0.52" stop-color="#101715"/>
+      <stop offset="1" stop-color="#050706"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#889590"/>
+      <stop offset="0.45" stop-color="#34423d"/>
+      <stop offset="1" stop-color="#101613"/>
+    </linearGradient>
+    <radialGradient id="irGlow">
+      <stop offset="0" stop-color="#ff6c4b" stop-opacity="0.95"/>
+      <stop offset="0.26" stop-color="#ff7154" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ff7154" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur32"><feGaussianBlur stdDeviation="32"/></filter>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="200%">
+      <feDropShadow dx="0" dy="32" stdDeviation="28" flood-color="#34453f" flood-opacity="0.28"/>
+    </filter>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#26352f" flood-opacity="0.12"/>
+    </filter>
+    <clipPath id="round"><rect width="1242" height="1660" rx="0"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+    <rect width="1242" height="1660" fill="#e7ede7"/>
+    <image xlink:href="home-background.jpg" x="0" y="0" width="1242" height="708" preserveAspectRatio="xMidYMid slice" opacity="0.7"/>
+    <rect width="1242" height="1660" fill="url(#wash)"/>
+    <circle cx="1090" cy="190" r="300" fill="#d4dfd7" opacity="0.45" filter="url(#blur32)"/>
+    <circle cx="160" cy="1380" r="320" fill="#cbd9cf" opacity="0.44" filter="url(#blur32)"/>
+
+    <g transform="translate(82 70)">
+      <rect x="0" y="0" width="202" height="52" rx="26" fill="#ffffff" opacity="0.82"/>
+      <circle cx="29" cy="26" r="9" fill="#ef7457"/>
+      <path d="M25 26c8-12 18-18 31-19M25 26c10-5 21-6 33-2" fill="none" stroke="#ef7457" stroke-width="3" stroke-linecap="round"/>
+      <text x="52" y="34" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="600" fill="#33413b">ESP32-S3</text>
+    </g>
+    <text x="82" y="212" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="28" font-weight="600" letter-spacing="5" fill="#567067">HOMEKIT 红外 HUB</text>
+    <text x="76" y="340" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="92" font-weight="700" fill="#17241f">让老家电</text>
+    <text x="76" y="444" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="92" font-weight="700" fill="#17241f">住进 Apple 家庭</text>
+    <text x="82" y="508" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="30" font-weight="400" fill="#4d5f57">学习遥控 · 网页配置 · 一键接入 Home App</text>
+
+    <g transform="translate(620 530)" filter="url(#shadow)">
+      <ellipse cx="235" cy="430" rx="250" ry="62" fill="#667970" opacity="0.18"/>
+      <circle cx="392" cy="113" r="118" fill="url(#irGlow)"/>
+      <path d="M382 118c55-52 112-80 175-84M397 147c71-26 132-28 190-8" fill="none" stroke="#f4795e" stroke-width="8" opacity="0.5" stroke-linecap="round"/>
+      <path d="M123 71 L388 18 Q432 12 449 57 L489 289 Q496 333 450 350 L184 416 Q130 429 113 381 L54 151 Q42 100 92 79Z" fill="url(#edge)"/>
+      <path d="M107 59 L366 4 Q414 -7 430 40 L473 272 Q482 317 434 329 L172 393 Q124 405 109 361 L47 128 Q34 79 83 67Z" fill="url(#device)"/>
+      <path d="M94 93 L371 34 Q394 29 401 54 L438 267 Q442 289 418 295 L161 356 Q137 362 130 337 L74 122 Q67 99 94 93Z" fill="#151e1b" stroke="#53635d" stroke-width="2"/>
+      <circle cx="386" cy="63" r="13" fill="#ff684d"/>
+      <circle cx="386" cy="63" r="27" fill="none" stroke="#ff684d" stroke-opacity="0.3" stroke-width="3"/>
+      <g transform="translate(145 138) rotate(-12)">
+        <path d="M0 61L62 10l62 51v88H82V93H42v56H0Z" fill="none" stroke="#9db1a8" stroke-width="6" stroke-linejoin="round"/>
+        <path d="M157 45c22-22 56-22 78 0M170 61c15-14 37-14 52 0M184 78c7-7 17-7 24 0" fill="none" stroke="#f07a5d" stroke-width="7" stroke-linecap="round"/>
+        <text x="0" y="205" font-family="Arial, sans-serif" font-size="27" font-weight="700" letter-spacing="4" fill="#d8e0dc">IR HUB</text>
+        <text x="0" y="236" font-family="Arial, sans-serif" font-size="16" letter-spacing="3" fill="#788a82">ESP32-S3</text>
+      </g>
+    </g>
+
+    <g transform="translate(82 775)">
+      <rect width="1078" height="490" rx="42" fill="#ffffff" opacity="0.85" filter="url(#softShadow)"/>
+      <text x="54" y="72" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="24" font-weight="600" letter-spacing="4" fill="#7b8d85">一台 HUB，统一控制</text>
+
+      <g transform="translate(54 112)">
+        <circle cx="42" cy="42" r="42" fill="#e6eee8"/>
+        <path d="M19 47h46M24 47v17h36V47M28 39c0-12 7-20 14-20s14 8 14 20" fill="none" stroke="#426157" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="110" y="37" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="31" font-weight="650" fill="#20312b">空调精细控制</text>
+        <text x="110" y="74" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#6a7c74">温度、模式、六档风速与显示屏</text>
+      </g>
+
+      <g transform="translate(54 225)">
+        <circle cx="42" cy="42" r="42" fill="#f8e7e1"/>
+        <rect x="18" y="22" width="48" height="37" rx="5" fill="none" stroke="#db7258" stroke-width="5"/>
+        <path d="M29 68h26M42 59v9" stroke="#db7258" stroke-width="5" stroke-linecap="round"/>
+        <text x="110" y="37" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="31" font-weight="650" fill="#20312b">通用红外学习</text>
+        <text x="110" y="74" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#6a7c74">电视、风扇、开关等设备逐键学习</text>
+      </g>
+
+      <g transform="translate(54 338)">
+        <circle cx="42" cy="42" r="42" fill="#e6eee8"/>
+        <path d="M21 42l21-19 21 19v23H49V50H35v15H21Z" fill="none" stroke="#426157" stroke-width="5" stroke-linejoin="round"/>
+        <text x="110" y="37" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="31" font-weight="650" fill="#20312b">Apple 家庭联动</text>
+        <text x="110" y="74" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#6a7c74">每台设备独立呈现，支持家庭自动化</text>
+      </g>
+
+      <g transform="translate(708 100)">
+        <rect width="312" height="304" rx="30" fill="#23312c"/>
+        <text x="32" y="54" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="20" font-weight="600" fill="#a9bbb3">本地管理面板</text>
+        <text x="32" y="91" font-family="Arial, sans-serif" font-size="16" fill="#758981">ir-hub.local:8080</text>
+        <g transform="translate(30 120)">
+          <rect width="252" height="58" rx="16" fill="#f2f5f2"/>
+          <circle cx="30" cy="29" r="12" fill="#e0775d"/>
+          <text x="55" y="36" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="19" font-weight="600" fill="#2e423a">学习新设备</text>
+        </g>
+        <g transform="translate(30 194)">
+          <rect width="252" height="58" rx="16" fill="#41534c"/>
+          <circle cx="30" cy="29" r="12" fill="#93ad9f"/>
+          <text x="55" y="36" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="19" font-weight="600" fill="#eaf0ec">配置即刻保存</text>
+        </g>
+      </g>
+    </g>
+
+    <g transform="translate(82 1322)">
+      <text x="0" y="35" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="27" font-weight="650" fill="#23342d">网页开箱即用</text>
+      <text x="0" y="79" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#64766e">同一局域网访问</text>
+      <rect x="0" y="104" width="620" height="76" rx="23" fill="#ffffff" opacity="0.82"/>
+      <circle cx="38" cy="142" r="13" fill="#ec755a"/>
+      <text x="68" y="151" font-family="Arial, sans-serif" font-size="28" font-weight="600" fill="#23342d">http://ir-hub.local:8080</text>
+    </g>
+
+    <g transform="translate(850 1345)">
+      <rect width="310" height="138" rx="32" fill="#e97055"/>
+      <text x="155" y="58" text-anchor="middle" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="27" font-weight="700" fill="#ffffff">最多支持 8 台</text>
+      <text x="155" y="96" text-anchor="middle" font-family="PingFang SC, Noto Sans CJK SC, Arial, sans-serif" font-size="22" fill="#fff3ef">自定义红外设备</text>
+    </g>
+
+    <path d="M82 1552H1160" stroke="#9aaba3" stroke-opacity="0.55"/>
+    <text x="82" y="1604" font-family="Arial, PingFang SC, sans-serif" font-size="22" font-weight="600" letter-spacing="2" fill="#52665d">ESP32 HOMEKIT IR HUB</text>
+    <text x="1160" y="1604" text-anchor="end" font-family="Arial, sans-serif" font-size="22" fill="#71827a">Firmware 2.0.9</text>
+  </g>
+</svg>
