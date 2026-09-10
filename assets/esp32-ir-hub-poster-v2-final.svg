@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1536" viewBox="0 0 1024 1536">
+  <defs>
+    <linearGradient id="topFade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#eef2ed" stop-opacity=".2"/><stop offset="1" stop-color="#eef2ed" stop-opacity="0"/></linearGradient>
+    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#fff" flood-opacity=".55"/></filter>
+  </defs>
+  <image xlink:href="esp32-ir-hub-poster-v2-visual.png" x="0" y="0" width="1024" height="1536"/>
+  <rect width="1024" height="510" fill="url(#topFade)"/>
+  <g transform="translate(64 54)" filter="url(#textShadow)">
+    <rect width="172" height="44" rx="22" fill="#f8faf6" fill-opacity=".92"/>
+    <circle cx="27" cy="22" r="7" fill="#ef7457"/>
+    <text x="46" y="29" font-family="Arial, PingFang SC, sans-serif" font-size="19" font-weight="700" fill="#557062">ESP32-S3</text>
+  </g>
+  <g transform="translate(64 156)" filter="url(#textShadow)">
+    <text y="0" font-family="Arial, PingFang SC, sans-serif" font-size="22" font-weight="700" letter-spacing="4" fill="#557062">HOMEKIT 红外 HUB</text>
+    <text y="98" font-family="PingFang SC, Noto Sans SC, Arial, sans-serif" font-size="75" font-weight="700" fill="#26342e">让老家电</text>
+    <text y="187" font-family="PingFang SC, Noto Sans SC, Arial, sans-serif" font-size="75" font-weight="700" fill="#26342e">住进 Apple 家庭</text>
+    <text y="238" font-family="PingFang SC, Noto Sans SC, Arial, sans-serif" font-size="24" font-weight="500" fill="#557062">学习遥控 · 网页配置 · 一键接入 Home App</text>
+  </g>
+  <g font-family="PingFang SC, Noto Sans SC, Arial, sans-serif" fill="#26342e">
+    <g transform="translate(72 1148)"><text y="0" font-size="23" font-weight="700">空调精细控制</text><text y="34" font-size="16" fill="#557062">温度、模式、六档风速与显示屏</text></g>
+    <g transform="translate(390 1148)"><text y="0" font-size="23" font-weight="700">通用红外学习</text><text y="34" font-size="16" fill="#557062">电视、风扇、开关等设备逐键学习</text></g>
+    <g transform="translate(707 1148)"><text y="0" font-size="23" font-weight="700">Apple 家庭联动</text><text y="34" font-size="16" fill="#557062">每台设备独立呈现，支持家庭自动化</text></g>
+  </g>
+  <g transform="translate(64 1462)" font-family="Arial, PingFang SC, sans-serif">
+    <text y="0" font-size="18" font-weight="700" letter-spacing="2" fill="#557062">ESP32 HOMEKIT IR HUB</text>
+    <text x="896" y="0" text-anchor="end" font-size="18" font-weight="600" fill="#557062">ir-hub.local:8080</text>
+  </g>
+</svg>

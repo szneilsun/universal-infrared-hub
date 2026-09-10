@@ -1,4 +1,4 @@
-// ESP32-S3 infrared Hub: common hardware, HomeKit, and learning console.
+// ESP32-C6 infrared Hub: common hardware, HomeKit, and learning console.
 
 #include <IRremote.hpp>
 #include <Preferences.h>
@@ -13,8 +13,10 @@
 #define IR_CAPTURE_VERBOSE 1
 #endif
 
-constexpr uint8_t IR_RECEIVE_PIN = 41;
-constexpr uint8_t IR_SEND_PIN = 40;
+// ESP32-C6 Dev Module wiring: receiver OUT -> GPIO 2, transmitter driver -> GPIO 3.
+// These pins avoid the C6 boot-strapping pins and are valid for the RMT peripheral.
+constexpr uint8_t IR_RECEIVE_PIN = 2;
+constexpr uint8_t IR_SEND_PIN = 3;
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
 constexpr uint32_t HUB_AID = 1;
@@ -73,7 +75,7 @@ void waitForIrTransmitter() {
   uint32_t elapsed = millis() - lastIrTransmissionFinishedAt;
   if (elapsed < MINIMUM_QUIET_TIME_MS) delay(MINIMUM_QUIET_TIME_MS - elapsed);
   // Do not let the receiver decode our own LED while a long raw frame is sent.
-  // On ESP32-S3 this also prevents receive interrupts from disturbing timing.
+  // On ESP32-C6 this also prevents receive interrupts from disturbing timing.
   IrReceiver.stop();
 }
 
@@ -115,7 +117,7 @@ void printMainMenu() {
 
 void printVersion() {
   Serial.printf("\nUniversal IR Remote v%s\n", FIRMWARE_VERSION);
-  Serial.println("Board: ESP32-S3");
+  Serial.println("Board: ESP32-C6");
   Serial.printf("IR receiver: GPIO %u | IR transmitter: GPIO %u\n",
                 IR_RECEIVE_PIN, IR_SEND_PIN);
 }
@@ -369,7 +371,7 @@ void setup() {
       new Characteristic::Identify();
       new Characteristic::Name("红外 Hub");
       new Characteristic::Manufacturer("ESP32 IR Hub");
-      new Characteristic::Model("ESP32-S3 IR Bridge");
+      new Characteristic::Model("ESP32-C6 IR Bridge");
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
 
   if (isBuiltInDeviceEnabled(0)) configureAirConditionerAccessory();
