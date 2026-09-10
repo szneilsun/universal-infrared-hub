@@ -23,11 +23,15 @@ constexpr uint32_t HUB_AID = 1;
 constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
 constexpr uint32_t USER_DEVICE_AID_BASE = 4;
-constexpr char FIRMWARE_VERSION[] = "2.0.9";
+constexpr char FIRMWARE_VERSION[] = "2.1.0";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
 constexpr char HOMEKIT_PAIRING_CODE[] = "11122333";
+constexpr uint16_t AP_SETUP_TIMEOUT_SECONDS = 300;
+constexpr uint8_t MAX_WIFI_PROFILES = 5;
+constexpr uint32_t WIFI_PROFILES_MAGIC = 0x57494636;  // "WIF6"
+constexpr uint32_t AP_STARTED_MARKER = 0x41504336;    // "APC6"
 
 struct __attribute__((packed)) LearnedCode {
   uint32_t magic;
@@ -44,12 +48,29 @@ enum ConsoleMode : uint8_t {
 };
 
 Preferences preferences;
+Preferences wifiProfilePreferences;
 ConsoleMode consoleMode = IDLE;
 int8_t pendingSlot = -1;
 char serialLine[32] = {};
 uint8_t serialLineLength = 0;
 bool irCaptureVerbose = IR_CAPTURE_VERBOSE;
 uint32_t lastIrTransmissionFinishedAt = 0;
+
+struct __attribute__((packed)) WiFiProfile {
+  char ssid[33];
+  char password[65];
+};
+
+struct __attribute__((packed)) WiFiProfileStore {
+  uint32_t magic;
+  WiFiProfile profiles[MAX_WIFI_PROFILES];
+};
+
+// Kept across ESP.restart(), but cleared after a real power cycle. HomeSpan
+// restarts when the setup hotspot ends, so this avoids opening it repeatedly.
+RTC_DATA_ATTR uint32_t apStartedMarker = 0;
+WiFiProfileStore wifiProfileStore = {};
+WebServer provisioningServer(80);
 
 void configureAirConditionerAccessory();
 void configureTelevisionAccessory();
@@ -62,6 +83,141 @@ void resetNetworkConfiguration();
 void resetHomeKitConfiguration();
 uint8_t cycleSetTopBoxCarrier();
 uint8_t getSetTopBoxCarrier();
+void startSetupHotspot();
+
+bool isValidWiFiProfile(const WiFiProfile &profile) {
+  return profile.ssid[0] != '\0';
+}
+
+void saveWiFiProfiles() {
+  wifiProfilePreferences.putBytes("profiles", &wifiProfileStore,
+                                  sizeof(wifiProfileStore));
+}
+
+void loadWiFiProfiles() {
+  wifiProfilePreferences.begin("wifi-profiles", false);
+  if (wifiProfilePreferences.getBytesLength("profiles") == sizeof(wifiProfileStore)) {
+    wifiProfilePreferences.getBytes("profiles", &wifiProfileStore,
+                                    sizeof(wifiProfileStore));
+  }
+  if (wifiProfileStore.magic != WIFI_PROFILES_MAGIC) {
+    memset(&wifiProfileStore, 0, sizeof(wifiProfileStore));
+    wifiProfileStore.magic = WIFI_PROFILES_MAGIC;
+  }
+}
+
+void addWiFiProfile(const char *ssid, const char *password) {
+  if (ssid == nullptr || ssid[0] == '\0') return;
+  int freeIndex = -1;
+  for (uint8_t i = 0; i < MAX_WIFI_PROFILES; ++i) {
+    WiFiProfile &profile = wifiProfileStore.profiles[i];
+    if (strcmp(profile.ssid, ssid) == 0) {
+      snprintf(profile.password, sizeof(profile.password), "%s", password);
+      saveWiFiProfiles();
+      return;
+    }
+    if (!isValidWiFiProfile(profile) && freeIndex < 0) freeIndex = i;
+  }
+  // If the list is full, replace the final entry with the newly configured Wi-Fi.
+  WiFiProfile &profile = wifiProfileStore.profiles[
+      freeIndex >= 0 ? freeIndex : MAX_WIFI_PROFILES - 1];
+  snprintf(profile.ssid, sizeof(profile.ssid), "%s", ssid);
+  snprintf(profile.password, sizeof(profile.password), "%s", password);
+  saveWiFiProfiles();
+}
+
+void migrateExistingHomeSpanWiFi() {
+  struct __attribute__((packed)) HomeSpanWiFiData {
+    char ssid[33];
+    char password[65];
+  } existing = {};
+  nvs_handle handle;
+  size_t size = sizeof(existing);
+  if (nvs_open("WIFI", NVS_READONLY, &handle) == ESP_OK) {
+    if (nvs_get_blob(handle, "WIFIDATA", &existing, &size) == ESP_OK &&
+        size == sizeof(existing) && existing.ssid[0] != '\0') {
+      addWiFiProfile(existing.ssid, existing.password);
+    }
+    nvs_close(handle);
+  }
+}
+
+void selectReachableWiFi() {
+  int bestProfile = -1;
+  int bestRssi = -1000;
+  WiFi.mode(WIFI_STA);
+  int networkCount = WiFi.scanNetworks();
+  for (int network = 0; network < networkCount; ++network) {
+    String ssid = WiFi.SSID(network);
+    for (uint8_t profile = 0; profile < MAX_WIFI_PROFILES; ++profile) {
+      if (isValidWiFiProfile(wifiProfileStore.profiles[profile]) &&
+          ssid == wifiProfileStore.profiles[profile].ssid &&
+          WiFi.RSSI(network) > bestRssi) {
+        bestProfile = profile;
+        bestRssi = WiFi.RSSI(network);
+      }
+    }
+  }
+  WiFi.scanDelete();
+  if (bestProfile >= 0) {
+    const WiFiProfile &profile = wifiProfileStore.profiles[bestProfile];
+    homeSpan.setWifiCredentials(profile.ssid, profile.password);
+    Serial.printf("Selected saved Wi-Fi: %s (RSSI %d dBm)\n", profile.ssid, bestRssi);
+  } else {
+    Serial.println("No saved Wi-Fi network is currently in range.");
+  }
+}
+
+void sendProvisioningPage() {
+  String knownNetworks;
+  for (uint8_t i = 0; i < MAX_WIFI_PROFILES; ++i) {
+    if (isValidWiFiProfile(wifiProfileStore.profiles[i])) {
+      knownNetworks += "<li>" + String(wifiProfileStore.profiles[i].ssid) + "</li>";
+    }
+  }
+  if (knownNetworks.length() == 0) knownNetworks = "<li>尚未保存网络</li>";
+  String page = "<!doctype html><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                "<title>红外 Hub 网络设置</title><style>body{font-family:sans-serif;max-width:480px;margin:36px auto;padding:0 20px;line-height:1.5}input,button{box-sizing:border-box;width:100%;padding:12px;margin:7px 0;font-size:16px}button{background:#285c45;color:white;border:0;border-radius:8px}</style>"
+                "<h1>红外 Hub 网络设置</h1><p>保存后会保留已有网络（最多 5 个），设备会自动连接当前可用且信号最强的网络。</p>"
+                "<form method='post' action='/save'><input name='ssid' maxlength='32' placeholder='Wi-Fi 名称（SSID）' required><input name='password' type='password' maxlength='64' placeholder='Wi-Fi 密码'><button>保存并连接</button></form><h2>已保存网络</h2><ul>" + knownNetworks + "</ul>";
+  provisioningServer.send(200, "text/html; charset=utf-8", page);
+}
+
+void saveProvisionedWiFi() {
+  String ssid = provisioningServer.arg("ssid");
+  String password = provisioningServer.arg("password");
+  ssid.trim();
+  if (ssid.length() == 0) {
+    provisioningServer.send(400, "text/plain; charset=utf-8", "Wi-Fi 名称不能为空");
+    return;
+  }
+  addWiFiProfile(ssid.c_str(), password.c_str());
+  homeSpan.setWifiCredentials(ssid.c_str(), password.c_str());
+  provisioningServer.send(200, "text/html; charset=utf-8",
+                          "<meta http-equiv='refresh' content='3'><p>网络已保存，设备正在重启并连接。</p>");
+  delay(800);
+  ESP.restart();
+}
+
+void startSetupHotspot() {
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASSWORD);
+  provisioningServer.on("/", HTTP_GET, sendProvisioningPage);
+  provisioningServer.on("/save", HTTP_POST, saveProvisionedWiFi);
+  provisioningServer.begin();
+  Serial.printf("Setup hotspot %s is available for %u minutes at http://192.168.4.1\n",
+                AP_SSID, AP_SETUP_TIMEOUT_SECONDS / 60);
+  uint32_t endAt = millis() + AP_SETUP_TIMEOUT_SECONDS * 1000UL;
+  while ((int32_t)(millis() - endAt) < 0) {
+    provisioningServer.handleClient();
+    delay(2);
+  }
+  provisioningServer.stop();
+  WiFi.softAPdisconnect(true);
+  Serial.println("Setup hotspot timed out; restarting to connect saved Wi-Fi.");
+  delay(100);
+  ESP.restart();
+}
 
 void announceNetworkConnection(int count) {
   String ip = WiFi.localIP().toString();
@@ -131,7 +287,13 @@ void eraseNvsNamespace(const char *name) {
   }
 }
 
-void resetNetworkConfiguration() { eraseNvsNamespace("WIFI"); }
+void resetNetworkConfiguration() {
+  eraseNvsNamespace("WIFI");
+  wifiProfilePreferences.clear();
+  // The reset flow immediately restarts the device; make that restart offer
+  // the setup hotspot again so new credentials can be entered right away.
+  apStartedMarker = 0;
+}
 
 void resetHomeKitConfiguration() {
   eraseNvsNamespace("HAP");
@@ -347,6 +509,9 @@ void processIR() {
 void setup() {
   Serial.begin(115200);
   delay(500);
+  loadWiFiProfiles();
+  migrateExistingHomeSpanWiFi();
+  selectReachableWiFi();
   IrSender.begin(IR_SEND_PIN, DISABLE_LED_FEEDBACK);
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
@@ -358,13 +523,18 @@ void setup() {
   homeSpan.setSerialInputDisable(true);
   homeSpan.setApSSID(AP_SSID);
   homeSpan.setApPassword(AP_PASSWORD);
-  homeSpan.setApTimeout(600);
-  homeSpan.enableAutoStartAP();
+  homeSpan.setApTimeout(AP_SETUP_TIMEOUT_SECONDS);
+  homeSpan.setApFunction(startSetupHotspot);
   homeSpan.setPairingCode(HOMEKIT_PAIRING_CODE);
   homeSpan.setSketchVersion(FIRMWARE_VERSION);
   homeSpan.setHostNameSuffix("");
   homeSpan.setConnectionCallback(announceNetworkConnection);
   homeSpan.begin(Category::Bridges, "红外 Hub", "ir-hub");
+
+  if (apStartedMarker != AP_STARTED_MARKER) {
+    apStartedMarker = AP_STARTED_MARKER;
+    homeSpan.processSerialCommand("A");
+  }
 
   new SpanAccessory(HUB_AID);
     new Service::AccessoryInformation();

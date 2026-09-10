@@ -1,7 +1,7 @@
 # ESP32 HomeKit 红外 Hub
 
 基于 ESP32-C6、HomeSpan 和 Arduino-IRremote，将使用 `KKZM-4WB` 遥控器的
-美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.0.9`，并支持
+美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.1.0`，并支持
 通过网页学习通用红外设备、动态创建 HomeKit 子配件。
 
 ![ESP32 HomeKit 红外 Hub 海报](./assets/esp32-ir-hub-poster-v2-final.png)
@@ -86,15 +86,15 @@ ESP32 与发射电源必须共地。推荐使用 940 nm 红外 LED，并在 5V �
 
 ## HomeKit 配置
 
-首次启动时：
+每次断电后重新上电时，设备都会创建 5 分钟的配置热点：
 
 1. 连接热点 `IR-AC-Setup`。
 2. 热点密码为 `iracsetup`。
-3. 完成家庭 Wi-Fi 配置。
-4. 在 Apple 家庭 App 中添加 `IR Air Conditioner`。
-5. 使用配对码 `111-22-333`。
+3. 打开 `http://192.168.4.1`，添加当前环境的家庭 Wi-Fi。
+4. 设备保存网络并重启，自动连接当前可用且信号最强的已保存网络（最多 5 个）。
+5. 在 Apple 家庭 App 中添加 `IR Air Conditioner`，使用配对码 `111-22-333`。
 
-串口菜单选项 `4` 可清除 HomeKit 配对和 Wi-Fi 配置，但保留已学习的红外码。
+配置热点超时后会关闭，设备将连接已保存的网络。串口菜单选项 `4` 会同时清除 HomeKit 配对、HomeSpan Wi-Fi 数据和全部已保存的 Wi-Fi 网络，但保留已学习的红外码。
 
 ## 串口菜单
 
@@ -114,7 +114,7 @@ ESP32 与发射电源必须共地。推荐使用 940 nm 红外 LED，并在 5V �
 时序，在主菜单输入 `5` 即可开启或关闭，无需重新编译。
 `IR_CAPTURE_VERBOSE` 用于设置每次启动后的默认状态。
 
-## 网页学习与动态设备（2.0.9）
+## 网页学习与动态设备（2.1.0）
 
 Hub 接入家庭 Wi-Fi 后，在同一局域网浏览器打开：
 
