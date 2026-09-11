@@ -22,7 +22,7 @@ constexpr uint32_t HUB_AID = 1;
 constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
 constexpr uint32_t USER_DEVICE_AID_BASE = 4;
-constexpr char FIRMWARE_VERSION[] = "2.1.9";
+constexpr char FIRMWARE_VERSION[] = "2.1.10";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
@@ -53,6 +53,7 @@ int8_t pendingSlot = -1;
 char serialLine[32] = {};
 uint8_t serialLineLength = 0;
 bool irCaptureVerbose = IR_CAPTURE_VERBOSE;
+bool receiveOwnIrTransmissions = false;
 uint32_t lastIrTransmissionFinishedAt = 0;
 
 struct __attribute__((packed)) WiFiProfile {
@@ -291,14 +292,14 @@ void waitForIrTransmitter() {
   constexpr uint32_t MINIMUM_QUIET_TIME_MS = 350;
   uint32_t elapsed = millis() - lastIrTransmissionFinishedAt;
   if (elapsed < MINIMUM_QUIET_TIME_MS) delay(MINIMUM_QUIET_TIME_MS - elapsed);
-  // Do not let the receiver decode our own LED while a long raw frame is sent.
-  // On ESP32-S3 this also prevents receive interrupts from disturbing timing.
-  IrReceiver.stop();
+  // Normally suppress self-reception while a long raw frame is sent. This can
+  // be toggled from the serial menu when validating transmitter/receiver setup.
+  if (!receiveOwnIrTransmissions) IrReceiver.stop();
 }
 
 void finishIrTransmission() {
   delay(5);
-  IrReceiver.start();
+  if (!receiveOwnIrTransmissions) IrReceiver.start();
   lastIrTransmissionFinishedAt = millis();
 }
 
@@ -329,7 +330,9 @@ void printMainMenu() {
                 irCaptureVerbose ? "ON" : "OFF");
   Serial.printf("6 - Cycle set-top-box carrier (currently %u kHz)\n",
                 getSetTopBoxCarrier());
-  Serial.println("Enter 1, 2, 3, 4, 5 or 6:");
+  Serial.printf("7 - Toggle self-reception of transmitted IR (currently %s)\n",
+                receiveOwnIrTransmissions ? "ON" : "OFF");
+  Serial.println("Enter 1, 2, 3, 4, 5, 6 or 7; enter 0 to show this menu:");
 }
 
 void printVersion() {
@@ -463,20 +466,25 @@ void handleIdleCommand(const char *command) {
     Serial.printf("Set-top-box carrier is now %u kHz.\n",
                   cycleSetTopBoxCarrier());
     printMainMenu();
+  } else if (strcmp(command, "7") == 0) {
+    receiveOwnIrTransmissions = !receiveOwnIrTransmissions;
+    Serial.printf("Self-reception of transmitted IR is now %s.\n",
+                  receiveOwnIrTransmissions ? "ON" : "OFF");
+    printMainMenu();
   } else {
-    Serial.println("Please enter 1, 2, 3, 4, 5 or 6.");
+    Serial.println("Please enter 1, 2, 3, 4, 5, 6 or 7; enter 0 for the menu.");
   }
 }
 
 void handleCommand(char *command) {
-  if (consoleMode == IDLE) {
-    handleIdleCommand(command);
-    return;
-  }
   if (strcmp(command, "0") == 0) {
     consoleMode = IDLE;
     pendingSlot = -1;
     printMainMenu();
+    return;
+  }
+  if (consoleMode == IDLE) {
+    handleIdleCommand(command);
     return;
   }
   uint8_t slot;

@@ -1,7 +1,7 @@
 # ESP32 HomeKit 红外 Hub
 
 基于 ESP32-S3、HomeSpan 和 Arduino-IRremote，将使用 `KKZM-4WB` 遥控器的
-美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.1.9`，并支持
+美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.1.10`，并支持
 通过网页学习通用红外设备、动态创建 HomeKit 子配件。
 
 ![ESP32 HomeKit 红外 Hub 海报](./assets/esp32-ir-hub-poster-v2-final.png)
@@ -108,11 +108,14 @@ ESP32 与发射电源必须共地。推荐使用 940 nm 红外 LED，并在 5V �
 4                   # 清除 HomeKit 与 Wi-Fi 配置
 5                   # 开关完整红外时序输出
 6                   # 切换机顶盒载波频率（40/56/36/38 kHz）
+7                   # 开关“发送的红外被自身接收”功能（用于收发测试）
 ```
 
 通用 Pulse-Distance/Pulse-Width 信号默认只输出紧凑重放数据。如需逐脉冲完整
 时序，在主菜单输入 `5` 即可开启或关闭，无需重新编译。
 `IR_CAPTURE_VERBOSE` 用于设置每次启动后的默认状态。
+在任意菜单层级输入 `0`，都会返回并完整显示主菜单。菜单 `7` 默认关闭；打开后，
+红外发射时接收器保持运行，便于验证收发电路，但会把设备自身发出的红外码打印出来。
 
 ## 网页学习与动态设备（2.1.0）
 
