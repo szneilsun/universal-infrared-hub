@@ -14,10 +14,10 @@
 #define IR_CAPTURE_VERBOSE 1
 #endif
 
-// ESP32-C6 Dev Module wiring: transmitter driver -> GPIO 14, receiver OUT -> GPIO 3.
+// ESP32-C6 Dev Module wiring: transmitter driver -> GPIO 4, receiver OUT -> GPIO 3.
 // These pins avoid the C6 boot-strapping pins and are valid for the RMT peripheral.
 constexpr uint8_t IR_RECEIVE_PIN = 3;
-constexpr uint8_t IR_SEND_PIN = 14;
+constexpr uint8_t IR_SEND_PIN = 4;
 constexpr uint8_t RGB_LED_PIN = 8;
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
@@ -25,7 +25,7 @@ constexpr uint32_t HUB_AID = 1;
 constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
 constexpr uint32_t USER_DEVICE_AID_BASE = 4;
-constexpr char FIRMWARE_VERSION[] = "2.1.9";
+constexpr char FIRMWARE_VERSION[] = "2.1.10";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";

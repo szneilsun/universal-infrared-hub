@@ -1,7 +1,7 @@
 # ESP32 HomeKit 红外 Hub
 
 基于 ESP32-C6、HomeSpan 和 Arduino-IRremote，将使用 `KKZM-4WB` 遥控器的
-美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.1.9`，并支持
+美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.1.10`，并支持
 通过网页学习通用红外设备、动态创建 HomeKit 子配件。
 
 ![ESP32 HomeKit 红外 Hub 海报](./assets/esp32-ir-hub-poster-v2-final.png)
@@ -51,14 +51,14 @@ Apple Home 没有空调显示屏这一标准属性，因此关屏命令使用空
 ## 硬件连接
 
 - GPIO 3：红外接收模块信号
-- GPIO 14：红外发射驱动输入
+- GPIO 4：红外发射驱动输入
 - GPIO 8：RGB LED 数据线（当前固定为低电平）
 - 串口波特率：115200
 
 红外 LED 不应由 GPIO 直接驱动。建议使用 S8050、2N2222 或逻辑级 MOSFET：
 
 ```text
-GPIO 14 ── 1kΩ ── NPN 基极
+GPIO 4 ── 1kΩ ── NPN 基极
 ESP32 GND ──────── NPN 发射极
 5V ── 47～100Ω ── 红外 LED 正极
 红外 LED 负极 ─── NPN 集电极
