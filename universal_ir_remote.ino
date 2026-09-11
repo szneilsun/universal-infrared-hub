@@ -5,6 +5,7 @@
 #include <HomeSpan.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <driver/gpio.h>
 #include <nvs.h>
 #include "dynamic_devices.h"
 #include "home_background.h"
@@ -13,25 +14,26 @@
 #define IR_CAPTURE_VERBOSE 1
 #endif
 
-// ESP32-C6 Dev Module wiring: receiver OUT -> GPIO 2, transmitter driver -> GPIO 3.
+// ESP32-C6 Dev Module wiring: transmitter driver -> GPIO 14, receiver OUT -> GPIO 3.
 // These pins avoid the C6 boot-strapping pins and are valid for the RMT peripheral.
-constexpr uint8_t IR_RECEIVE_PIN = 2;
-constexpr uint8_t IR_SEND_PIN = 3;
+constexpr uint8_t IR_RECEIVE_PIN = 3;
+constexpr uint8_t IR_SEND_PIN = 14;
+constexpr uint8_t RGB_LED_PIN = 8;
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
 constexpr uint32_t HUB_AID = 1;
 constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
 constexpr uint32_t USER_DEVICE_AID_BASE = 4;
-constexpr char FIRMWARE_VERSION[] = "2.1.0";
+constexpr char FIRMWARE_VERSION[] = "2.1.9";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
 constexpr char HOMEKIT_PAIRING_CODE[] = "11122333";
 constexpr uint16_t AP_SETUP_TIMEOUT_SECONDS = 300;
+constexpr uint16_t HOMEKIT_PORT = 51826;
 constexpr uint8_t MAX_WIFI_PROFILES = 5;
 constexpr uint32_t WIFI_PROFILES_MAGIC = 0x57494636;  // "WIF6"
-constexpr uint32_t AP_STARTED_MARKER = 0x41504336;    // "APC6"
 
 struct __attribute__((packed)) LearnedCode {
   uint32_t magic;
@@ -66,11 +68,11 @@ struct __attribute__((packed)) WiFiProfileStore {
   WiFiProfile profiles[MAX_WIFI_PROFILES];
 };
 
-// Kept across ESP.restart(), but cleared after a real power cycle. HomeSpan
-// restarts when the setup hotspot ends, so this avoids opening it repeatedly.
-RTC_DATA_ATTR uint32_t apStartedMarker = 0;
 WiFiProfileStore wifiProfileStore = {};
 WebServer provisioningServer(80);
+bool provisioningActive = false;
+uint32_t provisioningEndsAt = 0;
+uint32_t nextProvisioningStatusAt = 0;
 
 void configureAirConditionerAccessory();
 void configureTelevisionAccessory();
@@ -84,6 +86,7 @@ void resetHomeKitConfiguration();
 uint8_t cycleSetTopBoxCarrier();
 uint8_t getSetTopBoxCarrier();
 void startSetupHotspot();
+void pollSetupHotspot();
 
 bool isValidWiFiProfile(const WiFiProfile &profile) {
   return profile.ssid[0] != '\0';
@@ -146,6 +149,7 @@ void selectReachableWiFi() {
   int bestProfile = -1;
   int bestRssi = -1000;
   WiFi.mode(WIFI_STA);
+  Serial.println("Scanning for saved Wi-Fi networks...");
   int networkCount = WiFi.scanNetworks();
   for (int network = 0; network < networkCount; ++network) {
     String ssid = WiFi.SSID(network);
@@ -168,25 +172,73 @@ void selectReachableWiFi() {
   }
 }
 
+String escapeHtml(const String &value) {
+  String escaped;
+  escaped.reserve(value.length() + 8);
+  for (size_t i = 0; i < value.length(); ++i) {
+    switch (value[i]) {
+      case '&': escaped += F("&amp;"); break;
+      case '<': escaped += F("&lt;"); break;
+      case '>': escaped += F("&gt;"); break;
+      case '\"': escaped += F("&quot;"); break;
+      case '\'': escaped += F("&#39;"); break;
+      default: escaped += value[i]; break;
+    }
+  }
+  return escaped;
+}
+
 void sendProvisioningPage() {
   String knownNetworks;
   for (uint8_t i = 0; i < MAX_WIFI_PROFILES; ++i) {
     if (isValidWiFiProfile(wifiProfileStore.profiles[i])) {
-      knownNetworks += "<li>" + String(wifiProfileStore.profiles[i].ssid) + "</li>";
+      knownNetworks += "<li>" + escapeHtml(wifiProfileStore.profiles[i].ssid) + "</li>";
     }
   }
   if (knownNetworks.length() == 0) knownNetworks = "<li>尚未保存网络</li>";
+
+  String networkOptions = "<option value='' selected disabled>请选择 Wi-Fi 热点</option>";
+  Serial.println("Provisioning page: scanning nearby Wi-Fi networks...");
+  int networkCount = WiFi.scanNetworks();
+  for (int network = 0; network < networkCount; ++network) {
+    String ssid = WiFi.SSID(network);
+    if (ssid.length() == 0) continue;
+    bool duplicate = false;
+    for (int previous = 0; previous < network; ++previous) {
+      if (ssid == WiFi.SSID(previous)) {
+        duplicate = true;
+        break;
+      }
+    }
+    if (duplicate) continue;
+    String safeSsid = escapeHtml(ssid);
+    networkOptions += "<option value=\"" + safeSsid + "\">" + safeSsid + " (" +
+                      String(WiFi.RSSI(network)) + " dBm)";
+    if (WiFi.encryptionType(network) != WIFI_AUTH_OPEN) networkOptions += " &#128274;";
+    networkOptions += "</option>";
+  }
+  WiFi.scanDelete();
+  if (networkCount <= 0) {
+    networkOptions += "<option value='' disabled>未扫描到热点，可手动输入</option>";
+  }
+
   String page = "<!doctype html><meta name='viewport' content='width=device-width,initial-scale=1'>"
-                "<title>红外 Hub 网络设置</title><style>body{font-family:sans-serif;max-width:480px;margin:36px auto;padding:0 20px;line-height:1.5}input,button{box-sizing:border-box;width:100%;padding:12px;margin:7px 0;font-size:16px}button{background:#285c45;color:white;border:0;border-radius:8px}</style>"
+                "<title>红外 Hub 网络设置</title><style>body{font-family:sans-serif;max-width:480px;margin:36px auto;padding:0 20px;line-height:1.5}input,select,button{box-sizing:border-box;width:100%;padding:12px;margin:7px 0;font-size:16px}button{background:#285c45;color:white;border:0;border-radius:8px}.hint{color:#667;font-size:14px}</style>"
                 "<h1>红外 Hub 网络设置</h1><p>保存后会保留已有网络（最多 5 个），设备会自动连接当前可用且信号最强的网络。</p>"
-                "<form method='post' action='/save'><input name='ssid' maxlength='32' placeholder='Wi-Fi 名称（SSID）' required><input name='password' type='password' maxlength='64' placeholder='Wi-Fi 密码'><button>保存并连接</button></form><h2>已保存网络</h2><ul>" + knownNetworks + "</ul>";
+                "<form method='post' action='/save'><select name='ssid'>" + networkOptions + "</select>"
+                "<input name='manualSsid' maxlength='32' placeholder='隐藏网络：手动输入 SSID（可选）'>"
+                "<input name='password' type='password' maxlength='64' placeholder='Wi-Fi 密码'>"
+                "<button>保存并连接</button></form><p class='hint'>没看到热点？<a href='/'>重新扫描</a></p><h2>已保存网络</h2><ul>" + knownNetworks + "</ul>";
   provisioningServer.send(200, "text/html; charset=utf-8", page);
 }
 
 void saveProvisionedWiFi() {
   String ssid = provisioningServer.arg("ssid");
+  String manualSsid = provisioningServer.arg("manualSsid");
   String password = provisioningServer.arg("password");
   ssid.trim();
+  manualSsid.trim();
+  if (manualSsid.length() > 0) ssid = manualSsid;
   if (ssid.length() == 0) {
     provisioningServer.send(400, "text/plain; charset=utf-8", "Wi-Fi 名称不能为空");
     return;
@@ -200,23 +252,35 @@ void saveProvisionedWiFi() {
 }
 
 void startSetupHotspot() {
-  WiFi.mode(WIFI_AP);
+  if (provisioningActive) return;
+  // STA mode is kept enabled so the setup page can scan nearby access points.
+  WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(AP_SSID, AP_PASSWORD);
   provisioningServer.on("/", HTTP_GET, sendProvisioningPage);
   provisioningServer.on("/save", HTTP_POST, saveProvisionedWiFi);
   provisioningServer.begin();
+  provisioningActive = true;
+  provisioningEndsAt = millis() + AP_SETUP_TIMEOUT_SECONDS * 1000UL;
+  nextProvisioningStatusAt = millis() + 10000;
   Serial.printf("Setup hotspot %s is available for %u minutes at http://192.168.4.1\n",
                 AP_SSID, AP_SETUP_TIMEOUT_SECONDS / 60);
-  uint32_t endAt = millis() + AP_SETUP_TIMEOUT_SECONDS * 1000UL;
-  while ((int32_t)(millis() - endAt) < 0) {
-    provisioningServer.handleClient();
-    delay(2);
+}
+
+void pollSetupHotspot() {
+  if (!provisioningActive) return;
+  provisioningServer.handleClient();
+  if ((int32_t)(millis() - nextProvisioningStatusAt) >= 0) {
+    Serial.printf("Setup hotspot active at http://192.168.4.1 (%s); STA=%s\n",
+                  AP_SSID, WiFi.status() == WL_CONNECTED ? "connected" : "connecting");
+    nextProvisioningStatusAt = millis() + 10000;
   }
+  if ((int32_t)(millis() - provisioningEndsAt) < 0) return;
+
   provisioningServer.stop();
-  WiFi.softAPdisconnect(true);
-  Serial.println("Setup hotspot timed out; restarting to connect saved Wi-Fi.");
-  delay(100);
-  ESP.restart();
+  WiFi.softAPdisconnect(false);
+  WiFi.mode(WIFI_STA);
+  provisioningActive = false;
+  Serial.println("Setup hotspot closed after 5 minutes; station Wi-Fi remains active.");
 }
 
 void announceNetworkConnection(int count) {
@@ -290,9 +354,6 @@ void eraseNvsNamespace(const char *name) {
 void resetNetworkConfiguration() {
   eraseNvsNamespace("WIFI");
   wifiProfilePreferences.clear();
-  // The reset flow immediately restarts the device; make that restart offer
-  // the setup hotspot again so new credentials can be entered right away.
-  apStartedMarker = 0;
 }
 
 void resetHomeKitConfiguration() {
@@ -508,11 +569,22 @@ void processIR() {
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  delay(1000);
+  Serial.println();
+  Serial.println("=== Universal IR Remote booting ===");
+  Serial.printf("Firmware: %s (%s)\n", FIRMWARE_VERSION, FIRMWARE_BUILD_DATE);
+  Serial.printf("Chip: %s, CPU: %u MHz, free heap: %u bytes\n",
+                ESP.getChipModel(), ESP.getCpuFreqMHz(), ESP.getFreeHeap());
+  Serial.flush();
+  pinMode(RGB_LED_PIN, OUTPUT);
+  digitalWrite(RGB_LED_PIN, LOW);
+  Serial.printf("RGB LED data: GPIO %u held LOW\n", RGB_LED_PIN);
   loadWiFiProfiles();
   migrateExistingHomeSpanWiFi();
   selectReachableWiFi();
   IrSender.begin(IR_SEND_PIN, DISABLE_LED_FEEDBACK);
+  gpio_set_drive_capability(static_cast<gpio_num_t>(IR_SEND_PIN), GPIO_DRIVE_CAP_3);
+  Serial.printf("IR transmitter: GPIO %u, drive capability: maximum\n", IR_SEND_PIN);
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
   loadBuiltInDeviceConfig();
@@ -524,17 +596,12 @@ void setup() {
   homeSpan.setApSSID(AP_SSID);
   homeSpan.setApPassword(AP_PASSWORD);
   homeSpan.setApTimeout(AP_SETUP_TIMEOUT_SECONDS);
-  homeSpan.setApFunction(startSetupHotspot);
+  homeSpan.setPortNum(HOMEKIT_PORT);
   homeSpan.setPairingCode(HOMEKIT_PAIRING_CODE);
   homeSpan.setSketchVersion(FIRMWARE_VERSION);
   homeSpan.setHostNameSuffix("");
   homeSpan.setConnectionCallback(announceNetworkConnection);
   homeSpan.begin(Category::Bridges, "红外 Hub", "ir-hub");
-
-  if (apStartedMarker != AP_STARTED_MARKER) {
-    apStartedMarker = AP_STARTED_MARKER;
-    homeSpan.processSerialCommand("A");
-  }
 
   new SpanAccessory(HUB_AID);
     new Service::AccessoryInformation();
@@ -548,11 +615,13 @@ void setup() {
   if (isBuiltInDeviceEnabled(1)) configureTelevisionAccessory();
   configureUserDevices();
   beginDeviceManager();
+  startSetupHotspot();
   printMainMenu();
 }
 
 void loop() {
   homeSpan.poll();
+  pollSetupHotspot();
   pollDeviceManager();
   readSerialCommands();
   processIR();
