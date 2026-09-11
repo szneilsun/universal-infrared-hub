@@ -1,4 +1,4 @@
-// ESP32-S3 infrared Hub: common hardware, HomeKit, and learning console.
+// ESP32 infrared Hub: common hardware, HomeKit, and learning console.
 
 #include <IRremote.hpp>
 #include <Preferences.h>
@@ -13,16 +13,43 @@
 #define IR_CAPTURE_VERBOSE 1
 #endif
 
-// ESP32-S3 Dev Module wiring: receiver OUT -> GPIO 41, transmitter driver -> GPIO 40.
+// Keep platform-specific hardware details in one place. IR_HUB_PLATFORM can
+// also be set explicitly in a custom Arduino build if automatic detection is
+// not desired.
+#define IR_HUB_PLATFORM_ESP32_S3 1
+#define IR_HUB_PLATFORM_ESP32_C6 2
+
+#ifndef IR_HUB_PLATFORM
+  #if defined(CONFIG_IDF_TARGET_ESP32S3)
+    #define IR_HUB_PLATFORM IR_HUB_PLATFORM_ESP32_S3
+  #elif defined(CONFIG_IDF_TARGET_ESP32C6)
+    #define IR_HUB_PLATFORM IR_HUB_PLATFORM_ESP32_C6
+  #else
+    #error "This sketch supports only ESP32-S3 and ESP32-C6 targets."
+  #endif
+#endif
+
+#if IR_HUB_PLATFORM == IR_HUB_PLATFORM_ESP32_S3
 constexpr uint8_t IR_RECEIVE_PIN = 41;
 constexpr uint8_t IR_SEND_PIN = 40;
+constexpr char PLATFORM_NAME[] = "ESP32-S3";
+constexpr char HOMEKIT_MODEL[] = "ESP32-S3 IR Bridge";
+#elif IR_HUB_PLATFORM == IR_HUB_PLATFORM_ESP32_C6
+constexpr uint8_t IR_RECEIVE_PIN = 3;
+constexpr uint8_t IR_SEND_PIN = 4;
+constexpr char PLATFORM_NAME[] = "ESP32-C6";
+constexpr char HOMEKIT_MODEL[] = "ESP32-C6 IR Bridge";
+#else
+  #error "IR_HUB_PLATFORM must be IR_HUB_PLATFORM_ESP32_S3 or IR_HUB_PLATFORM_ESP32_C6."
+#endif
+
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
 constexpr uint32_t HUB_AID = 1;
 constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
 constexpr uint32_t USER_DEVICE_AID_BASE = 4;
-constexpr char FIRMWARE_VERSION[] = "2.1.10";
+constexpr char FIRMWARE_VERSION[] = "2.1.11";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
@@ -337,7 +364,7 @@ void printMainMenu() {
 
 void printVersion() {
   Serial.printf("\nUniversal IR Remote v%s\n", FIRMWARE_VERSION);
-  Serial.println("Board: ESP32-S3");
+  Serial.printf("Board: %s\n", PLATFORM_NAME);
   Serial.printf("IR receiver: GPIO %u | IR transmitter: GPIO %u\n",
                 IR_RECEIVE_PIN, IR_SEND_PIN);
 }
@@ -608,7 +635,7 @@ void setup() {
       new Characteristic::Identify();
       new Characteristic::Name("红外 Hub");
       new Characteristic::Manufacturer("ESP32 IR Hub");
-      new Characteristic::Model("ESP32-S3 IR Bridge");
+      new Characteristic::Model(HOMEKIT_MODEL);
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
 
   if (isBuiltInDeviceEnabled(0)) configureAirConditionerAccessory();
