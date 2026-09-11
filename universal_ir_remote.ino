@@ -1,11 +1,10 @@
-// ESP32-C6 infrared Hub: common hardware, HomeKit, and learning console.
+// ESP32-S3 infrared Hub: common hardware, HomeKit, and learning console.
 
 #include <IRremote.hpp>
 #include <Preferences.h>
 #include <HomeSpan.h>
 #include <WebServer.h>
 #include <WiFi.h>
-#include <driver/gpio.h>
 #include <nvs.h>
 #include "dynamic_devices.h"
 #include "home_background.h"
@@ -14,11 +13,9 @@
 #define IR_CAPTURE_VERBOSE 1
 #endif
 
-// ESP32-C6 Dev Module wiring: transmitter driver -> GPIO 14, receiver OUT -> GPIO 3.
-// These pins avoid the C6 boot-strapping pins and are valid for the RMT peripheral.
-constexpr uint8_t IR_RECEIVE_PIN = 3;
-constexpr uint8_t IR_SEND_PIN = 14;
-constexpr uint8_t RGB_LED_PIN = 8;
+// ESP32-S3 Dev Module wiring: receiver OUT -> GPIO 41, transmitter driver -> GPIO 40.
+constexpr uint8_t IR_RECEIVE_PIN = 41;
+constexpr uint8_t IR_SEND_PIN = 40;
 constexpr uint8_t MAX_CODES = 20;
 constexpr uint32_t CODE_MAGIC = 0x49524332;
 constexpr uint32_t HUB_AID = 1;
@@ -295,7 +292,7 @@ void waitForIrTransmitter() {
   uint32_t elapsed = millis() - lastIrTransmissionFinishedAt;
   if (elapsed < MINIMUM_QUIET_TIME_MS) delay(MINIMUM_QUIET_TIME_MS - elapsed);
   // Do not let the receiver decode our own LED while a long raw frame is sent.
-  // On ESP32-C6 this also prevents receive interrupts from disturbing timing.
+  // On ESP32-S3 this also prevents receive interrupts from disturbing timing.
   IrReceiver.stop();
 }
 
@@ -337,7 +334,7 @@ void printMainMenu() {
 
 void printVersion() {
   Serial.printf("\nUniversal IR Remote v%s\n", FIRMWARE_VERSION);
-  Serial.println("Board: ESP32-C6");
+  Serial.println("Board: ESP32-S3");
   Serial.printf("IR receiver: GPIO %u | IR transmitter: GPIO %u\n",
                 IR_RECEIVE_PIN, IR_SEND_PIN);
 }
@@ -576,15 +573,10 @@ void setup() {
   Serial.printf("Chip: %s, CPU: %u MHz, free heap: %u bytes\n",
                 ESP.getChipModel(), ESP.getCpuFreqMHz(), ESP.getFreeHeap());
   Serial.flush();
-  pinMode(RGB_LED_PIN, OUTPUT);
-  digitalWrite(RGB_LED_PIN, LOW);
-  Serial.printf("RGB LED data: GPIO %u held LOW\n", RGB_LED_PIN);
   loadWiFiProfiles();
   migrateExistingHomeSpanWiFi();
   selectReachableWiFi();
   IrSender.begin(IR_SEND_PIN, DISABLE_LED_FEEDBACK);
-  gpio_set_drive_capability(static_cast<gpio_num_t>(IR_SEND_PIN), GPIO_DRIVE_CAP_3);
-  Serial.printf("IR transmitter: GPIO %u, drive capability: maximum\n", IR_SEND_PIN);
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
   loadBuiltInDeviceConfig();
@@ -608,7 +600,7 @@ void setup() {
       new Characteristic::Identify();
       new Characteristic::Name("红外 Hub");
       new Characteristic::Manufacturer("ESP32 IR Hub");
-      new Characteristic::Model("ESP32-C6 IR Bridge");
+      new Characteristic::Model("ESP32-S3 IR Bridge");
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
 
   if (isBuiltInDeviceEnabled(0)) configureAirConditionerAccessory();
