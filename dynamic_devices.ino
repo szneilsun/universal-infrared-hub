@@ -225,7 +225,7 @@ String restartingPage(const String &title, const String &message, bool returnToM
 void sendManagerPage() {
   String html = pageHeader();
   String ipAddress = WiFi.localIP().toString();
-  html += "<p class='access'>管理地址：<b>http://ir-hub.local:8080</b><br>当前 IP：<b>http://" + ipAddress + ":8080</b></p>";
+  html += "<p class='access'>管理地址：<b>http://" + String(HOST_NAME) + ".local:8080</b><br>当前 IP：<b>http://" + ipAddress + ":8080</b></p>";
   html += F("<p class='muted'>在此管理内置与学习型遥控器。修改 HomeKit 配件名称或启用状态后，Hub 将自动重启并刷新家庭 App。</p>");
   html += "<section><h2>" + htmlEscape(builtInDeviceName(BUILTIN_AIR_CONDITIONER)) + " <small>（内置：美菱 KKZM-4WB 空调）</small></h2>";
   html += F("<p class='muted'>协议：38 kHz、120 bit；网页可测试开机、关机、显示屏切换。温度、模式及风速仍通过 Home App 控制。</p>");
@@ -274,7 +274,9 @@ void sendManagerPage() {
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定删除所有自建设备及学习码？此操作不可恢复。')\"><input type='hidden' name='action' value='clear-learned'><button class='danger'>删除所有学习设备</button></form>"
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定清除 Wi-Fi 配置并进入联网设置？')\"><input type='hidden' name='action' value='reset-network'><button class='warning'>重置网络</button></form>"
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定清除 HomeKit 配对？需要在家庭 App 中重新添加 Hub。')\"><input type='hidden' name='action' value='reset-homekit'><button class='warning'>重置 HomeKit</button></form></section>");
-  html += "<section class='about'><p class='muted'>红外 Hub v" + String(FIRMWARE_VERSION) + " · 编译于 " + String(FIRMWARE_BUILD_DATE) + "</p><p class='credit'>Coding with AI, Loving(❤️) by Neil's</p></section></body></html>";
+  html += "<section class='about'><p class='muted'>红外 Hub v" + String(FIRMWARE_VERSION) + " · 编译于 " + String(FIRMWARE_BUILD_DATE) + "</p>";
+  html += "<p class='muted'>硬件：" + String(PLATFORM_NAME) + " · 红外接收 GPIO " + String(IR_RECEIVE_PIN) + " · 红外发射 GPIO " + String(IR_SEND_PIN) + "</p>";
+  html += F("<p class='credit'>Coding with AI, Loving(❤️) by Neil's</p></section></body></html>");
   deviceServer.send(200, "text/html; charset=utf-8", html);
 }
 
@@ -456,7 +458,7 @@ void beginDeviceManager() {
     deviceServer.send(200, "application/json", isWebLearning() ? "{\"learning\":true}" : "{\"learning\":false}");
   });
   deviceServer.begin();
-  Serial.println("Device manager: http://ir-hub.local:8080");
+  Serial.printf("Device manager: http://%s.local:8080\n", HOST_NAME);
 }
 
 void pollDeviceManager() {

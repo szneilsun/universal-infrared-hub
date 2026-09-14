@@ -6,6 +6,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include <nvs.h>
+#include <esp32-hal-rmt.h>
 #include "dynamic_devices.h"
 #include "home_background.h"
 
@@ -34,11 +35,15 @@ constexpr uint8_t IR_RECEIVE_PIN = 41;
 constexpr uint8_t IR_SEND_PIN = 40;
 constexpr char PLATFORM_NAME[] = "ESP32-S3";
 constexpr char HOMEKIT_MODEL[] = "ESP32-S3 IR Bridge";
+constexpr char HUB_NAME[] = "红外 Hub S3";
+constexpr char HOST_NAME[] = "ir-hub-s3";
 #elif IR_HUB_PLATFORM == IR_HUB_PLATFORM_ESP32_C6
 constexpr uint8_t IR_RECEIVE_PIN = 3;
 constexpr uint8_t IR_SEND_PIN = 4;
 constexpr char PLATFORM_NAME[] = "ESP32-C6";
 constexpr char HOMEKIT_MODEL[] = "ESP32-C6 IR Bridge";
+constexpr char HUB_NAME[] = "红外 Hub C6";
+constexpr char HOST_NAME[] = "ir-hub-c6";
 #else
   #error "IR_HUB_PLATFORM must be IR_HUB_PLATFORM_ESP32_S3 or IR_HUB_PLATFORM_ESP32_C6."
 #endif
@@ -49,7 +54,7 @@ constexpr uint32_t HUB_AID = 1;
 constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
 constexpr uint32_t USER_DEVICE_AID_BASE = 4;
-constexpr char FIRMWARE_VERSION[] = "2.1.11";
+constexpr char FIRMWARE_VERSION[] = "2.1.12";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
@@ -311,7 +316,7 @@ void pollSetupHotspot() {
 void announceNetworkConnection(int count) {
   String ip = WiFi.localIP().toString();
   Serial.printf("\n=== IR Hub network ready (connection %d) ===\n", count);
-  Serial.printf("Open: http://ir-hub.local:8080\n");
+  Serial.printf("Open: http://%s.local:8080\n", HOST_NAME);
   Serial.printf("IPv4: http://%s:8080\n", ip.c_str());
 }
 
@@ -319,6 +324,8 @@ void waitForIrTransmitter() {
   constexpr uint32_t MINIMUM_QUIET_TIME_MS = 350;
   uint32_t elapsed = millis() - lastIrTransmissionFinishedAt;
   if (elapsed < MINIMUM_QUIET_TIME_MS) delay(MINIMUM_QUIET_TIME_MS - elapsed);
+  // Finish pending USB/UART output before starting a timing-sensitive frame.
+  Serial.flush();
   // Normally suppress self-reception while a long raw frame is sent. This can
   // be toggled from the serial menu when validating transmitter/receiver setup.
   if (!receiveOwnIrTransmissions) IrReceiver.stop();
@@ -328,6 +335,66 @@ void finishIrTransmission() {
   delay(5);
   if (!receiveOwnIrTransmissions) IrReceiver.start();
   lastIrTransmissionFinishedAt = millis();
+}
+
+// ESP32-S3 and ESP32-C6 both provide an RMT peripheral. Submit the complete
+// mark/space envelope to hardware so Wi-Fi, USB logging and receive interrupts
+// cannot stretch individual pulse timings on the CPU.
+bool sendHardwareIrTimings(const uint16_t *durations, size_t durationCount,
+                           uint16_t carrierKHz) {
+  constexpr size_t MAX_DURATIONS = 256;
+  if (durations == nullptr || durationCount == 0 ||
+      durationCount > MAX_DURATIONS || carrierKHz == 0) {
+    Serial.println("RMT IR: invalid timing data.");
+    return false;
+  }
+
+  rmt_data_t symbols[(MAX_DURATIONS + 1) / 2] = {};
+  const size_t symbolCount = (durationCount + 1) / 2;
+  for (size_t i = 0; i < symbolCount; ++i) {
+    const size_t markIndex = i * 2;
+    symbols[i].duration0 = durations[markIndex];
+    symbols[i].level0 = HIGH;
+    if (markIndex + 1 < durationCount) {
+      symbols[i].duration1 = durations[markIndex + 1];
+      symbols[i].level1 = LOW;
+    } else {
+      // Keep the final mark and terminate in the inactive state.
+      symbols[i].duration1 = 1;
+      symbols[i].level1 = LOW;
+    }
+  }
+
+  if (!rmtInit(IR_SEND_PIN, RMT_TX_MODE, RMT_MEM_NUM_BLOCKS_1, 1000000)) {
+    Serial.println("RMT IR: transmitter initialization failed.");
+    return false;
+  }
+  const bool configured = rmtSetEOT(IR_SEND_PIN, LOW) &&
+      rmtSetCarrier(IR_SEND_PIN, true, false, carrierKHz * 1000, 0.33f);
+  const bool sent = configured &&
+      rmtWrite(IR_SEND_PIN, symbols, symbolCount, RMT_WAIT_FOR_EVER);
+  rmtDeinit(IR_SEND_PIN);
+  pinMode(IR_SEND_PIN, OUTPUT);
+  digitalWrite(IR_SEND_PIN, LOW);
+  if (!sent) Serial.println("RMT IR: transmission failed.");
+  return sent;
+}
+
+bool sendHardwareNec(uint8_t address, uint8_t command) {
+  uint16_t timings[67] = {};
+  size_t index = 0;
+  timings[index++] = 9000;
+  timings[index++] = 4500;
+  const uint8_t bytes[] = {address, static_cast<uint8_t>(~address),
+                           command, static_cast<uint8_t>(~command)};
+  for (uint8_t value : bytes) {
+    for (uint8_t bit = 0; bit < 8; ++bit) {
+      timings[index++] = 560;
+      timings[index++] = value & (1U << bit) ? 1690 : 560;
+    }
+  }
+  timings[index++] = 560;
+  return sendHardwareIrTimings(timings, index, 38);
 }
 
 void recordKey(uint8_t slot, char *key, size_t keySize) {
@@ -628,12 +695,12 @@ void setup() {
   homeSpan.setSketchVersion(FIRMWARE_VERSION);
   homeSpan.setHostNameSuffix("");
   homeSpan.setConnectionCallback(announceNetworkConnection);
-  homeSpan.begin(Category::Bridges, "红外 Hub", "ir-hub");
+  homeSpan.begin(Category::Bridges, HUB_NAME, HOST_NAME);
 
   new SpanAccessory(HUB_AID);
     new Service::AccessoryInformation();
       new Characteristic::Identify();
-      new Characteristic::Name("红外 Hub");
+      new Characteristic::Name(HUB_NAME);
       new Characteristic::Manufacturer("ESP32 IR Hub");
       new Characteristic::Model(HOMEKIT_MODEL);
       new Characteristic::FirmwareRevision(FIRMWARE_VERSION);
