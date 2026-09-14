@@ -46,10 +46,11 @@ void sendSetTopBoxPower() {
       600, 1100, 550, 1150, 550, 1100, 550, 1150,
       550};
   waitForIrTransmitter();
-  Serial.printf("Television: action=set-top-box-power, raw %u kHz\n",
-                getSetTopBoxCarrier());
-  IrSender.sendRaw(raw, sizeof(raw) / sizeof(raw[0]), getSetTopBoxCarrier());
+  const bool sent = sendHardwareIrTimings(
+      raw, sizeof(raw) / sizeof(raw[0]), getSetTopBoxCarrier());
   finishIrTransmission();
+  Serial.printf("Television: action=set-top-box-power, raw %u kHz%s\n",
+                getSetTopBoxCarrier(), sent ? "" : " FAILED");
 }
 
 void sendSetTopBoxRemote(uint16_t command, const char *name) {
@@ -73,10 +74,10 @@ void sendSetTopBoxRemote(uint16_t command, const char *name) {
   append(550);
 
   waitForIrTransmitter();
-  Serial.printf("Pioneer set-top box: action=%s, raw command=0x%04X\n",
-                name, command);
-  IrSender.sendRaw(raw, index, getSetTopBoxCarrier());
+  const bool sent = sendHardwareIrTimings(raw, index, getSetTopBoxCarrier());
   finishIrTransmission();
+  Serial.printf("Pioneer set-top box: action=%s, raw command=0x%04X%s\n",
+                name, command, sent ? "" : " FAILED");
   lastTelevisionControlAt = millis();
 }
 
@@ -94,10 +95,10 @@ void sendTelevisionCommand(uint8_t command) {
     case SET_TOP_BOX_POWER: sendSetTopBoxPower(); return;
   }
   waitForIrTransmitter();
-  Serial.printf("Television: action=%s, NEC address=0x%X command=0x%X\n",
-                name, address, value);
-  IrSender.sendNEC(address, value, 0);
+  const bool sent = sendHardwareNec(address, value);
   finishIrTransmission();
+  Serial.printf("Television: action=%s, NEC address=0x%X command=0x%X%s\n",
+                name, address, value, sent ? "" : " FAILED");
   if (command != TV_POWER) lastTelevisionControlAt = millis();
 }
 

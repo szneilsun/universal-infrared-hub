@@ -124,7 +124,8 @@ ESP32 与发射电源必须共地。推荐使用 940 nm 红外 LED，并在 5V �
 Hub 接入家庭 Wi-Fi 后，在同一局域网浏览器打开：
 
 ```text
-http://ir-hub.local:8080
+ESP32-C6：http://ir-hub-c6.local:8080
+ESP32-S3：http://ir-hub-s3.local:8080
 ```
 
 这是固定的 Bonjour/mDNS 地址，适用于 iPhone、iPad 和 Mac；即使路由器重新分配
@@ -145,7 +146,7 @@ Hub 会自动重启并刷新 HomeKit 配件列表。
 创建后逐键点击“学习”，将实体遥控器在接收头约 20 cm 内按一次对应键。点击
 “完成并发布此设备”时，配置和红外码会写入 NVS，Hub 自动重启并更新 HomeKit
 桥接器配置。重启后，新设备会出现在 Apple 家庭 App；如果 Home App 保留旧配件
-列表，关闭并重新打开 App，仍未出现时删除并重新添加“红外 Hub”。
+列表，关闭并重新打开 App，仍未出现时删除并重新添加对应的“红外 Hub C6”或“红外 Hub S3”。
 
 红外遥控器通常没有状态回传。对于使用“电源切换”码的设备，App 显示状态可能
 和实体设备不一致；这是红外单向控制本身的限制。
@@ -158,7 +159,7 @@ HomeKit（仅清除配对）和删除所有学习设备（清除所有自建设�
 每项操作均需确认并会重启 Hub。
 
 网页顶部会同时显示固定管理地址和当前 DHCP IPv4 地址。固定地址推荐收藏到
-Safari：`http://ir-hub.local:8080`。
+Safari：C6 使用 `http://ir-hub-c6.local:8080`，S3 使用 `http://ir-hub-s3.local:8080`。
 
 ## 已识别协议
 

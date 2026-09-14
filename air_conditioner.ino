@@ -55,15 +55,26 @@ bool sendMeiling(uint16_t temperatureTenths, MeilingMode mode,
   }
   frame[14] = meilingChecksum(frame, 14);
 
-  uint64_t rawData[2] = {};
-  for (uint8_t i = 0; i < 8; ++i) rawData[0] |= (uint64_t)frame[i] << (i * 8);
-  for (uint8_t i = 0; i < 7; ++i) rawData[1] |= (uint64_t)frame[i + 8] << (i * 8);
+  uint16_t timings[243] = {};
+  size_t timingCount = 0;
+  timings[timingCount++] = 8450;
+  timings[timingCount++] = 4200;
+  for (uint8_t byte : frame) {
+    for (uint8_t bit = 0; bit < 8; ++bit) {
+      timings[timingCount++] = 550;
+      timings[timingCount++] = byte & (1U << bit) ? 1600 : 550;
+    }
+  }
+  timings[timingCount++] = 550;
 
   const char *actionName = action == MEILING_POWER_ON ? "power-on"
       : action == MEILING_POWER_OFF ? "power-off"
       : action == MEILING_MODE ? "mode"
       : action == MEILING_DISPLAY_TOGGLE ? "display-toggle"
       : action == MEILING_FAN_SPEED ? "fan-speed" : "temperature";
+  waitForIrTransmitter();
+  const bool sent = sendHardwareIrTimings(timings, timingCount, 38);
+  finishIrTransmission();
   if (action == MEILING_FAN_SPEED) {
     Serial.printf("Meiling: action=%s, mode=%s, temperature=%u.%u C, "
                   "fan-level=%u/5, checksum=0x%02X\n",
@@ -74,12 +85,7 @@ bool sendMeiling(uint16_t temperatureTenths, MeilingMode mode,
                   actionName, mode == MEILING_HEAT ? "heat" : "cool",
                   wholeDegrees, tenths, frame[14]);
   }
-  waitForIrTransmitter();
-  IrSender.sendPulseDistanceWidthFromArray(
-      38, 8450, 4200, 550, 1600, 550, 550, rawData, 120,
-      PROTOCOL_IS_LSB_FIRST, 0, 0);
-  finishIrTransmission();
-  return true;
+  return sent;
 }
 
 struct IRAirConditioner : Service::HeaterCooler {
