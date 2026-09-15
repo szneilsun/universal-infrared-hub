@@ -67,6 +67,13 @@ void deviceCodeKey(uint8_t id, uint8_t action, char *key, size_t keySize) {
   snprintf(key, keySize, "dev%uk%u", id, action);
 }
 
+void removeStoredCode(const char *key) {
+  char rawKey[12];
+  rawStorageKey(key, rawKey, sizeof(rawKey));
+  preferences.remove(key);
+  preferences.remove(rawKey);
+}
+
 bool loadUserDevice(uint8_t id, UserDevice &device) {
   char key[12];
   deviceKey(id, key, sizeof(key));
@@ -96,18 +103,14 @@ bool sendUserCode(uint8_t id, uint8_t action) {
     Serial.printf("Device %u action %u has not been learned.\n", id + 1, action);
     return false;
   }
-  IRData signal = {};
-  signal.protocol = (decode_type_t)code.protocol;
-  signal.address = code.address;
-  signal.command = code.command;
-  signal.extra = code.extra;
-  signal.decodedRawData = code.rawCode;
-  signal.numberOfBits = code.bits;
-  Serial.printf("Learned device %u: sending action %u.\n", id + 1, action);
-  waitForIrTransmitter();
-  IrSender.write(&signal, NO_REPEATS);
-  finishIrTransmission();
-  return true;
+  if (isRawStoredProtocol(code.protocol))
+    Serial.printf("Learned device %u: sending action %u, raw %u timings at %u kHz.\n",
+                  id + 1, action, code.bits, code.extra);
+  else
+    Serial.printf("Learned device %u: sending action %u.\n", id + 1, action);
+  char key[12];
+  deviceCodeKey(id, action, key, sizeof(key));
+  return transmitLearnedSignal(key, code);
 }
 
 const char *deviceTypeName(uint8_t type) {
@@ -327,7 +330,7 @@ void removeUserDeviceData(uint8_t id) {
   preferences.remove(key);
   for (uint8_t action = 0; action < MAX_DEVICE_ACTIONS; ++action) {
     deviceCodeKey(id, action, key, sizeof(key));
-    preferences.remove(key);
+    removeStoredCode(key);
   }
 }
 
@@ -335,7 +338,7 @@ void clearAllLearnedData() {
   char key[12];
   for (uint8_t slot = 0; slot < MAX_CODES; ++slot) {
     recordKey(slot, key, sizeof(key));
-    preferences.remove(key);
+    removeStoredCode(key);
   }
   for (uint8_t id = 0; id < MAX_USER_DEVICES; ++id) {
     removeUserDeviceData(id);
@@ -469,20 +472,20 @@ void pollDeviceManager() {
 bool isWebLearning() { return webLearningDevice >= 0; }
 
 void saveWebLearnedCode(const IRData &signal) {
-  LearnedCode code = {};
-  code.magic = CODE_MAGIC;
-  code.protocol = signal.protocol;
-  code.address = signal.address;
-  code.command = signal.command;
-  code.extra = signal.extra;
-  code.rawCode = signal.decodedRawData;
-  code.bits = signal.numberOfBits;
   char key[12];
   deviceCodeKey(webLearningDevice, webLearningAction, key, sizeof(key));
-  if (preferences.putBytes(key, &code, sizeof(code)) == sizeof(code))
-    Serial.printf("Web learning saved: device=%u action=%u\n", webLearningDevice + 1, webLearningAction);
-  else
+  if (saveLearnedSignal(key, signal)) {
+    if (signal.protocol == UNKNOWN || signal.protocol == PULSE_DISTANCE ||
+        signal.protocol == PULSE_WIDTH)
+      Serial.printf("Web learning saved: device=%u action=%u, raw timings=%u\n",
+                    webLearningDevice + 1, webLearningAction,
+                    signal.rawlen - 1);
+    else
+      Serial.printf("Web learning saved: device=%u action=%u\n",
+                    webLearningDevice + 1, webLearningAction);
+  } else {
     Serial.println("Web learning could not save the command.");
+  }
   webLearningDevice = -1;
   webLearningAction = -1;
 }

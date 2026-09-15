@@ -54,7 +54,7 @@ constexpr uint32_t HUB_AID = 1;
 constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
 constexpr uint32_t USER_DEVICE_AID_BASE = 4;
-constexpr char FIRMWARE_VERSION[] = "2.1.12";
+constexpr char FIRMWARE_VERSION[] = "2.1.17";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
@@ -63,6 +63,8 @@ constexpr uint16_t AP_SETUP_TIMEOUT_SECONDS = 300;
 constexpr uint16_t HOMEKIT_PORT = 51826;
 constexpr uint8_t MAX_WIFI_PROFILES = 5;
 constexpr uint32_t WIFI_PROFILES_MAGIC = 0x57494636;  // "WIF6"
+constexpr uint16_t MAX_RAW_DURATIONS = RAW_BUFFER_LENGTH - 1;
+constexpr uint8_t DEFAULT_RAW_CARRIER_KHZ = 38;
 
 struct __attribute__((packed)) LearnedCode {
   uint32_t magic;
@@ -102,7 +104,6 @@ WiFiProfileStore wifiProfileStore = {};
 WebServer provisioningServer(80);
 bool provisioningActive = false;
 uint32_t provisioningEndsAt = 0;
-uint32_t nextProvisioningStatusAt = 0;
 
 void configureAirConditionerAccessory();
 void configureTelevisionAccessory();
@@ -291,7 +292,6 @@ void startSetupHotspot() {
   provisioningServer.begin();
   provisioningActive = true;
   provisioningEndsAt = millis() + AP_SETUP_TIMEOUT_SECONDS * 1000UL;
-  nextProvisioningStatusAt = millis() + 10000;
   Serial.printf("Setup hotspot %s is available for %u minutes at http://192.168.4.1\n",
                 AP_SSID, AP_SETUP_TIMEOUT_SECONDS / 60);
 }
@@ -299,11 +299,6 @@ void startSetupHotspot() {
 void pollSetupHotspot() {
   if (!provisioningActive) return;
   provisioningServer.handleClient();
-  if ((int32_t)(millis() - nextProvisioningStatusAt) >= 0) {
-    Serial.printf("Setup hotspot active at http://192.168.4.1 (%s); STA=%s\n",
-                  AP_SSID, WiFi.status() == WL_CONNECTED ? "connected" : "connecting");
-    nextProvisioningStatusAt = millis() + 10000;
-  }
   if ((int32_t)(millis() - provisioningEndsAt) < 0) return;
 
   provisioningServer.stop();
@@ -342,14 +337,13 @@ void finishIrTransmission() {
 // cannot stretch individual pulse timings on the CPU.
 bool sendHardwareIrTimings(const uint16_t *durations, size_t durationCount,
                            uint16_t carrierKHz) {
-  constexpr size_t MAX_DURATIONS = 256;
   if (durations == nullptr || durationCount == 0 ||
-      durationCount > MAX_DURATIONS || carrierKHz == 0) {
+      durationCount > MAX_RAW_DURATIONS || carrierKHz == 0) {
     Serial.println("RMT IR: invalid timing data.");
     return false;
   }
 
-  rmt_data_t symbols[(MAX_DURATIONS + 1) / 2] = {};
+  rmt_data_t symbols[(MAX_RAW_DURATIONS + 1) / 2] = {};
   const size_t symbolCount = (durationCount + 1) / 2;
   for (size_t i = 0; i < symbolCount; ++i) {
     const size_t markIndex = i * 2;
@@ -410,8 +404,102 @@ bool loadCode(uint8_t slot, LearnedCode &code) {
 }
 
 bool isSupportedForStorage(const IRData &signal) {
-  return signal.protocol != UNKNOWN && signal.protocol != PULSE_DISTANCE &&
-         signal.protocol != PULSE_WIDTH;
+  const bool rawProtocol = signal.protocol == UNKNOWN ||
+                           signal.protocol == PULSE_DISTANCE ||
+                           signal.protocol == PULSE_WIDTH;
+  if (!rawProtocol) return true;
+  return !(signal.flags & IRDATA_FLAGS_WAS_OVERFLOW) && signal.rawlen > 1 &&
+         signal.rawlen - 1 <= MAX_RAW_DURATIONS;
+}
+
+bool isRawStoredProtocol(uint8_t protocol) {
+  return protocol == UNKNOWN || protocol == PULSE_DISTANCE ||
+         protocol == PULSE_WIDTH;
+}
+
+void rawStorageKey(const char *codeKey, char *key, size_t keySize) {
+  snprintf(key, keySize, "%sr", codeKey);
+}
+
+bool saveLearnedSignal(const char *key, const IRData &signal) {
+  LearnedCode code = {};
+  code.magic = CODE_MAGIC;
+  code.protocol = (uint8_t)signal.protocol;
+  code.address = signal.address;
+  code.command = signal.command;
+  code.extra = signal.extra;
+  code.rawCode = signal.decodedRawData;
+  code.bits = signal.numberOfBits;
+
+  char rawKey[12];
+  rawStorageKey(key, rawKey, sizeof(rawKey));
+  if (isRawStoredProtocol(code.protocol)) {
+    const uint16_t rawLength = signal.rawlen - 1;
+    uint16_t rawTimings[MAX_RAW_DURATIONS];
+    for (uint16_t i = 0; i < rawLength; ++i) {
+      uint32_t duration = IrReceiver.irparams.rawbuf[i + 1] * MICROS_PER_TICK;
+      if ((i & 1) == 0) {
+        duration = duration > MARK_EXCESS_MICROS
+                       ? duration - MARK_EXCESS_MICROS : 1;
+      } else {
+        duration += MARK_EXCESS_MICROS;
+      }
+      rawTimings[i] = (uint16_t)duration;
+    }
+    code.extra = DEFAULT_RAW_CARRIER_KHZ;
+    code.bits = rawLength;
+    if (preferences.putBytes(rawKey, rawTimings,
+                             rawLength * sizeof(rawTimings[0])) !=
+        rawLength * sizeof(rawTimings[0])) {
+      Serial.println("Could not save raw timing data.");
+      return false;
+    }
+  } else {
+    preferences.remove(rawKey);
+  }
+
+  if (preferences.putBytes(key, &code, sizeof(code)) != sizeof(code)) {
+    if (isRawStoredProtocol(code.protocol)) preferences.remove(rawKey);
+    Serial.println("Could not save this command.");
+    return false;
+  }
+  return true;
+}
+
+bool transmitLearnedSignal(const char *key, const LearnedCode &code) {
+  waitForIrTransmitter();
+  bool sent = false;
+  if (isRawStoredProtocol(code.protocol)) {
+    char rawKey[12];
+    rawStorageKey(key, rawKey, sizeof(rawKey));
+    const size_t byteCount = preferences.getBytesLength(rawKey);
+    if (code.bits == 0 || code.bits > MAX_RAW_DURATIONS ||
+        byteCount != code.bits * sizeof(uint16_t)) {
+      Serial.println("Stored raw timing data is missing or invalid.");
+      finishIrTransmission();
+      return false;
+    }
+    uint16_t rawTimings[MAX_RAW_DURATIONS];
+    if (preferences.getBytes(rawKey, rawTimings, byteCount) != byteCount) {
+      Serial.println("Could not load raw timing data.");
+      finishIrTransmission();
+      return false;
+    }
+    sent = sendHardwareIrTimings(rawTimings, code.bits,
+                                 code.extra ? code.extra
+                                            : DEFAULT_RAW_CARRIER_KHZ);
+  } else {
+    IRData signal = {};
+    signal.protocol = (decode_type_t)code.protocol;
+    signal.address = code.address;
+    signal.command = code.command;
+    signal.extra = code.extra;
+    signal.decodedRawData = code.rawCode;
+    signal.numberOfBits = code.bits;
+    sent = IrSender.write(&signal, NO_REPEATS);
+  }
+  finishIrTransmission();
+  return sent;
 }
 
 void printMainMenu() {
@@ -500,22 +588,11 @@ void startSending() {
 }
 
 void saveCode(uint8_t slot, const IRData &signal) {
-  LearnedCode code = {};
-  code.magic = CODE_MAGIC;
-  code.protocol = (uint8_t)signal.protocol;
-  code.address = signal.address;
-  code.command = signal.command;
-  code.extra = signal.extra;
-  code.rawCode = signal.decodedRawData;
-  code.bits = signal.numberOfBits;
   char key[12];
   recordKey(slot, key, sizeof(key));
-  if (preferences.putBytes(key, &code, sizeof(code)) != sizeof(code)) {
-    Serial.println("Could not save this command.");
-    return;
-  }
+  if (!saveLearnedSignal(key, signal)) return;
   Serial.printf("Saved command %u: %s address=0x%X command=0x%X\n", slot + 1,
-                getProtocolString(signal.protocol), code.address, code.command);
+                getProtocolString(signal.protocol), signal.address, signal.command);
 }
 
 bool transmitCode(uint8_t slot, bool printMessage = true) {
@@ -524,21 +601,18 @@ bool transmitCode(uint8_t slot, bool printMessage = true) {
     if (printMessage) Serial.printf("Command %u has not been learned yet.\n", slot + 1);
     return false;
   }
-  IRData signal = {};
-  signal.protocol = (decode_type_t)code.protocol;
-  signal.address = code.address;
-  signal.command = code.command;
-  signal.extra = code.extra;
-  signal.decodedRawData = code.rawCode;
-  signal.numberOfBits = code.bits;
   if (printMessage) {
-    Serial.printf("Sending command %u: %s address=0x%X command=0x%X\n", slot + 1,
-                  getProtocolString(signal.protocol), signal.address, signal.command);
+    if (isRawStoredProtocol(code.protocol))
+      Serial.printf("Sending command %u: raw %u timings at %u kHz\n", slot + 1,
+                    code.bits, code.extra);
+    else
+      Serial.printf("Sending command %u: %s address=0x%X command=0x%X\n", slot + 1,
+                    getProtocolString((decode_type_t)code.protocol), code.address,
+                    code.command);
   }
-  waitForIrTransmitter();
-  IrSender.write(&signal, NO_REPEATS);
-  finishIrTransmission();
-  return true;
+  char key[12];
+  recordKey(slot, key, sizeof(key));
+  return transmitLearnedSignal(key, code);
 }
 
 void handleIdleCommand(const char *command) {

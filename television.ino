@@ -54,15 +54,21 @@ void sendSetTopBoxPower() {
 }
 
 void sendSetTopBoxRemote(uint16_t command, const char *name) {
+  // Midpoints of the 550/600 us marks and spaces and the 1100/1150 us
+  // one-spaces captured from the physical remote. All five navigation codes
+  // contain the same number of one bits, giving a complete frame of ~68 ms.
+  constexpr uint16_t DATA_MARK_US = 570;
+  constexpr uint16_t ZERO_SPACE_US = 570;
+  constexpr uint16_t ONE_SPACE_US = 1120;
   uint16_t raw[85];
   uint8_t index = 0;
   auto append = [&](uint16_t duration) { raw[index++] = duration; };
   auto appendBits = [&](uint32_t data, uint8_t bitCount) {
     for (int8_t bit = bitCount - 1; bit >= 0; --bit) {
-      append(550);
+      append(DATA_MARK_US);
       // Replay the working remote timing directly. A demodulating receiver
       // introduces mark/space distortion, so loopback must not be compensated.
-      append(data & (1UL << bit) ? 1100 : 550);
+      append(data & (1UL << bit) ? ONE_SPACE_US : ZERO_SPACE_US);
     }
   };
   append(3650);
@@ -71,7 +77,7 @@ void sendSetTopBoxRemote(uint16_t command, const char *name) {
   append(3650);
   append(1800);
   appendBits(command, 16);
-  append(550);
+  append(DATA_MARK_US);
 
   waitForIrTransmitter();
   const bool sent = sendHardwareIrTimings(raw, index, getSetTopBoxCarrier());
