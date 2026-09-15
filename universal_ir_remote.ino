@@ -5,6 +5,7 @@
 #include <HomeSpan.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <Update.h>
 #include <nvs.h>
 #include <esp32-hal-rmt.h>
 #include "dynamic_devices.h"
@@ -55,7 +56,7 @@ constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
 constexpr uint32_t LEADER_AIR_CONDITIONER_AID = 4;
 constexpr uint32_t USER_DEVICE_AID_BASE = 5;
-constexpr char FIRMWARE_VERSION[] = "3.0.1";
+constexpr char FIRMWARE_VERSION[] = "3.1.0";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";

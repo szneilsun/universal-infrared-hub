@@ -73,10 +73,14 @@ ESP32 与发射电源必须共地。推荐使用 940 nm 红外 LED，并在 5V �
 - HomeSpan 2.1.8
 - Arduino-IRremote 4.7.1
 - 开发板：ESP32S3 Dev Module 或 ESP32C6 Dev Module
-- 分区：Huge APP（3 MB No OTA / 1 MB SPIFFS）
+- 分区：Minimal SPIFFS（1.9 MB APP with OTA / 128 KB SPIFFS）
 - 上传速度：115200
 
 固件入口：[universal_ir_remote.ino](./universal_ir_remote.ino)
+
+首次启用 OTA 时需使用 USB 和上述分区配置完整刷入一次。之后可在设备管理页进入
+“固件升级”，或访问 `http://ir-hub-c6.local:8080/update`（S3 使用
+`ir-hub-s3.local`）上传与芯片型号匹配的 `.bin` 固件。
 
 程序会通过 `IR_HUB_PLATFORM` 自动识别 S3/C6 编译目标并选择正确引脚、串口板型显示与 HomeKit 型号。也可以在自定义构建参数中显式指定 `IR_HUB_PLATFORM=1`（S3）或 `IR_HUB_PLATFORM=2`（C6）。
 

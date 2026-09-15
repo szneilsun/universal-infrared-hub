@@ -263,6 +263,49 @@ String restartingPage(const String &title, const String &message, bool returnToM
   return html;
 }
 
+void sendOtaPage() {
+  String html = pageHeader();
+  html += F("<section><h2>固件升级</h2>"
+            "<p class='muted'>请选择为当前芯片编译的 .bin 固件。写入完成后 Hub 会自动重启。</p>"
+            "<form method='post' action='/update' enctype='multipart/form-data'>"
+            "<input type='file' name='firmware' accept='.bin,application/octet-stream' required>"
+            "<button type='submit'>上传并升级</button></form>"
+            "<p><a href='/'>返回设备管理</a></p></section></body></html>");
+  deviceServer.send(200, "text/html; charset=utf-8", html);
+}
+
+void handleOtaUpload() {
+  HTTPUpload &upload = deviceServer.upload();
+  if (upload.status == UPLOAD_FILE_START) {
+    IrReceiver.stop();
+    Serial.printf("OTA: receiving %s\n", upload.filename.c_str());
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) Update.printError(Serial);
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (Update.write(upload.buf, upload.currentSize) != upload.currentSize)
+      Update.printError(Serial);
+  } else if (upload.status == UPLOAD_FILE_END) {
+    if (Update.end(true))
+      Serial.printf("OTA: wrote %u bytes\n", upload.totalSize);
+    else
+      Update.printError(Serial);
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    Update.abort();
+    IrReceiver.start();
+    Serial.println("OTA: upload aborted");
+  }
+}
+
+void handleOtaResult() {
+  if (Update.hasError()) {
+    IrReceiver.start();
+    deviceServer.send(500, "text/plain; charset=utf-8", "固件升级失败，请查看串口日志。");
+    return;
+  }
+  restartAt = millis() + 1200;
+  deviceServer.send(200, "text/html; charset=utf-8",
+                    restartingPage("固件升级成功", "新固件已写入，Hub 正在重启。"));
+}
+
 void sendManagerPage() {
   String html = pageHeader();
   String ipAddress = WiFi.localIP().toString();
@@ -318,6 +361,7 @@ void sendManagerPage() {
             "<select name='type'><option value='4'>灯（LightBulb）</option><option value='0'>开关（Switch）</option><option value='5'>插座（Outlet）</option><option value='1'>风扇（FanV2）</option><option value='3'>空调 / 冷暖设备（HeaterCooler）</option><option value='6'>恒温器（Thermostat）</option><option value='2'>电视 / 机顶盒（Television）</option></select><button>创建并开始学习</button></form>"
             "<p class='muted'>提示：带独立开/关按键的设备，目前请学习常用的“开关”键；状态无法由红外反向读取。</p></section>");
   html += F("<section><h2>系统维护</h2><p class='muted'>以下操作会立即重启 Hub。网络与 HomeKit 重置不会删除红外码；删除学习设备不会影响内置空调和机顶盒。</p>"
+            "<form class='publish-form' method='get' action='/update'><button>固件升级</button></form>"
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定删除所有自建设备及学习码？此操作不可恢复。')\"><input type='hidden' name='action' value='clear-learned'><button class='danger'>删除所有学习设备</button></form>"
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定清除 Wi-Fi 配置并进入联网设置？')\"><input type='hidden' name='action' value='reset-network'><button class='warning'>重置网络</button></form>"
             "<form class='publish-form' method='post' action='/maintenance' onsubmit=\"return confirm('确定清除 HomeKit 配对？需要在家庭 App 中重新添加 Hub。')\"><input type='hidden' name='action' value='reset-homekit'><button class='warning'>重置 HomeKit</button></form></section>");
@@ -508,6 +552,8 @@ void beginDeviceManager() {
   deviceServer.on("/builtintest", HTTP_POST, handleBuiltInTest);
   deviceServer.on("/learn", HTTP_POST, handleLearn);
   deviceServer.on("/publish", HTTP_POST, handlePublish);
+  deviceServer.on("/update", HTTP_GET, sendOtaPage);
+  deviceServer.on("/update", HTTP_POST, handleOtaResult, handleOtaUpload);
   deviceServer.on("/status", HTTP_GET, []() {
     deviceServer.send(200, "application/json", isWebLearning() ? "{\"learning\":true}" : "{\"learning\":false}");
   });
