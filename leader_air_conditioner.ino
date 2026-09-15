@@ -11,13 +11,22 @@ const uint8_t LEADER_FAN_B6[LEADER_FAN_LEVELS] = {
     0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02};
 const uint8_t LEADER_FAN_AUX[LEADER_FAN_LEVELS] = {
     0x00, 0x00, 0x03, 0x05, 0x01, 0x06, 0x02, 0x00};
-const uint8_t LEADER_FAN_AUX_CHECK[LEADER_FAN_LEVELS] = {
-    0xED, 0xED, 0xEE, 0xEA, 0xEC, 0xE8, 0xEF, 0xED};
-
 uint8_t reverseLeaderNibble(uint8_t value) {
   value &= 0x0F;
   return ((value & 0x01) << 3) | ((value & 0x02) << 1) |
          ((value & 0x04) >> 1) | ((value & 0x08) >> 3);
+}
+
+uint8_t reverseLeaderByte(uint8_t value) {
+  value = (value >> 4) | (value << 4);
+  value = ((value & 0xCC) >> 2) | ((value & 0x33) << 2);
+  return ((value & 0xAA) >> 1) | ((value & 0x55) << 1);
+}
+
+uint8_t leaderChecksum(const uint8_t *frame, size_t start, size_t end) {
+  uint8_t sum = 0;
+  for (size_t i = start; i < end; ++i) sum += reverseLeaderByte(frame[i]);
+  return reverseLeaderByte(sum);
 }
 
 uint8_t leaderFanLevelForSpeed(float speed) {
@@ -54,12 +63,10 @@ bool sendLeader(uint16_t temperatureTenths, uint8_t fanLevel,
   // B12 records the remote operation: power, fan change, or state update.
   frame[12] = action == LEADER_POWER ? 0xA0 :
               action == LEADER_FAN ? 0x20 : 0x00;
-  frame[13] = (uint8_t)(0x10 | ((frame[1] & 0x0F) ^ frame[4] ^
-                                frame[5] ^ frame[6]));
-  frame[13] ^= frame[10] ^ frame[12];
+  frame[13] = leaderChecksum(frame, 0, 13);
   frame[14] = 0xED;
   frame[16] = LEADER_FAN_AUX[fanIndex];
-  frame[21] = LEADER_FAN_AUX_CHECK[fanIndex];
+  frame[21] = leaderChecksum(frame, 14, 21);
 
   uint16_t timings[357] = {};
   size_t index = 0;
