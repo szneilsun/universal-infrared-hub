@@ -53,8 +53,9 @@ constexpr uint32_t CODE_MAGIC = 0x49524332;
 constexpr uint32_t HUB_AID = 1;
 constexpr uint32_t AIR_CONDITIONER_AID = 2;
 constexpr uint32_t TELEVISION_AID = 3;
-constexpr uint32_t USER_DEVICE_AID_BASE = 4;
-constexpr char FIRMWARE_VERSION[] = "2.1.17";
+constexpr uint32_t LEADER_AIR_CONDITIONER_AID = 4;
+constexpr uint32_t USER_DEVICE_AID_BASE = 5;
+constexpr char FIRMWARE_VERSION[] = "3.0.0";
 constexpr char FIRMWARE_BUILD_DATE[] = __DATE__ " " __TIME__;
 constexpr char AP_SSID[] = "IR-AC-Setup";
 constexpr char AP_PASSWORD[] = "iracsetup";
@@ -106,6 +107,7 @@ bool provisioningActive = false;
 uint32_t provisioningEndsAt = 0;
 
 void configureAirConditionerAccessory();
+void configureLeaderAirConditionerAccessory();
 void configureTelevisionAccessory();
 void configureUserDevices();
 void beginDeviceManager();
@@ -756,9 +758,9 @@ void setup() {
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK);
   preferences.begin("ir-codes", false);
   loadBuiltInDeviceConfig();
-  if (preferences.getUInt("hapSchema", 0) < 13) {
+  if (preferences.getUInt("hapSchema", 0) < 14) {
     homeSpan.forceNewConfigNumber();
-    preferences.putUInt("hapSchema", 13);
+    preferences.putUInt("hapSchema", 14);
   }
   homeSpan.setSerialInputDisable(true);
   homeSpan.setApSSID(AP_SSID);
@@ -781,6 +783,7 @@ void setup() {
 
   if (isBuiltInDeviceEnabled(0)) configureAirConditionerAccessory();
   if (isBuiltInDeviceEnabled(1)) configureTelevisionAccessory();
+  if (isBuiltInDeviceEnabled(2)) configureLeaderAirConditionerAccessory();
   configureUserDevices();
   beginDeviceManager();
   startSetupHotspot();

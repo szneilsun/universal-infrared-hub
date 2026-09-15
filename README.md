@@ -1,8 +1,8 @@
 # ESP32 HomeKit 红外 Hub
 
-基于 ESP32-S3 / ESP32-C6、HomeSpan 和 Arduino-IRremote，将使用 `KKZM-4WB` 遥控器的
-美菱空调和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `2.1.17`，并支持
-通过网页学习通用红外设备、动态创建 HomeKit 子配件。
+基于 ESP32-S3 / ESP32-C6、HomeSpan 和 Arduino-IRremote，将美菱空调、Leader 空调
+和 Pioneer 机顶盒接入 Apple 家庭 App。当前版本为 `3.0.0`，并支持通过网页学习通用
+红外设备、动态创建 HomeKit 子配件。
 
 ![ESP32 HomeKit 红外 Hub 海报](./assets/esp32-ir-hub-poster-v2-final.png)
 
@@ -27,6 +27,7 @@ universal_ir_remote/
 ## 已实现功能
 
 - 空调开机与关机
+- Leader 空调：开关、制冷、16.0～30.0℃（0.5℃步进）与自动、静音、1～5档、强力风
 - 制冷、制热模式切换
 - 16.0～32.0℃温度调节，步进 0.1℃
 - 六档风速：自动、1档、2档、3档、4档、最强
