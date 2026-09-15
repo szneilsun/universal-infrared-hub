@@ -104,13 +104,13 @@ struct IRLeaderAirConditioner : Service::HeaterCooler {
 
   IRLeaderAirConditioner() : Service::HeaterCooler() {
     active = new Characteristic::Active(0);
-    currentTemperature = new Characteristic::CurrentTemperature(20);
+    currentTemperature = new Characteristic::CurrentTemperature(24);
     currentState = new Characteristic::CurrentHeaterCoolerState(0);
     targetState = new Characteristic::TargetHeaterCoolerState(2);
     targetState->setValidValues(1, 2);  // Captured frame set currently covers cooling.
-    coolingThreshold = new Characteristic::CoolingThresholdTemperature(20);
+    coolingThreshold = new Characteristic::CoolingThresholdTemperature(24);
     coolingThreshold->setRange(16, 30, 0.5);
-    heatingThreshold = new Characteristic::HeatingThresholdTemperature(20);
+    heatingThreshold = new Characteristic::HeatingThresholdTemperature(24);
     heatingThreshold->setRange(16, 30, 0.5);
     new Characteristic::TemperatureDisplayUnits(0);
     fanLevel = loadLeaderFanLevel();
@@ -171,5 +171,5 @@ void configureLeaderAirConditionerAccessory() {
 }
 
 void sendWebLeaderAirConditionerTest(uint8_t action) {
-  sendLeader(200, 1, LEADER_POWER, action == 0);
+  sendLeader(240, 1, LEADER_POWER, action == 0);
 }
